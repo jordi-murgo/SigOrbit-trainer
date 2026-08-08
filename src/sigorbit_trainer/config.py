@@ -124,7 +124,8 @@ class RuntimeConfig(StrictModel):
 
 
 class BackboneStageConfig(StrictModel):
-    epochs: int = Field(default=40, ge=1, le=500)
+    epochs: int = Field(default=40, ge=0, le=500)
+    initial_checkpoint: Path | None = None
     lr: float = Field(default=1e-3, gt=0, le=1.0, allow_inf_nan=False)
     weight_decay: float = Field(default=1e-4, ge=0, le=1.0, allow_inf_nan=False)
     warmup_epochs: int = Field(default=2, ge=0, le=100)
@@ -236,7 +237,9 @@ class TrainerConfig(StrictModel):
 
     @model_validator(mode="after")
     def validate_epochs(self) -> TrainerConfig:
-        if self.backbone.warmup_epochs > self.backbone.epochs:
+        if self.backbone.epochs == 0 and self.backbone.initial_checkpoint is None:
+            raise ValueError("backbone.epochs=0 requires backbone.initial_checkpoint")
+        if self.backbone.epochs and self.backbone.warmup_epochs > self.backbone.epochs:
             raise ValueError("backbone warmup_epochs cannot exceed epochs")
         if self.joint.warmup_epochs > self.joint.epochs:
             raise ValueError("joint warmup_epochs cannot exceed epochs")

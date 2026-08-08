@@ -63,6 +63,45 @@ class RunResult:
         self.metrics = metrics
 
 
+def _load_initial_backbone(
+    path: Path, backbone: nn.Module, head: ArcFace, device: torch.device
+) -> None:
+    """Seed stage 1 from an externally trained C8 backbone.
+
+    Reproduces the documented protocol: the canonicalized model starts from a
+    pretrained steerable backbone plus its ArcFace centres, rather than random
+    init. The backbone is fully convolutional and ends in adaptive pooling, so a
+    checkpoint trained at one input size transfers to another.
+    """
+    resolved = path.expanduser().resolve(strict=True)
+    payload = torch.load(resolved, map_location=device, weights_only=False)
+    if "model_state_dict" not in payload:
+        raise ValueError(f"{resolved} lacks model_state_dict")
+    load_portable_state(
+        backbone,
+        {
+            key: value
+            for key, value in payload["model_state_dict"].items()
+            if not key.endswith((".filter", ".expanded_bias"))
+        },
+    )
+    head_state = payload.get("head_state_dict")
+    if head_state is None:
+        print(f"initial backbone {resolved.name}: no ArcFace head; centres stay random", flush=True)
+        return
+    weight = head_state.get("W", head_state.get("weight"))
+    if weight is None:
+        raise ValueError(f"{resolved} head_state_dict lacks 'W'/'weight'")
+    if tuple(weight.shape) != tuple(head.weight.shape):
+        raise ValueError(
+            "ArcFace centre mismatch: checkpoint "
+            f"{tuple(weight.shape)} vs model {tuple(head.weight.shape)}"
+        )
+    with torch.no_grad():
+        head.weight.copy_(weight.to(device=device, dtype=head.weight.dtype))
+    print(f"initial backbone {resolved.name}: weights + ArcFace head restored", flush=True)
+
+
 def run_training(config: TrainerConfig, *, source_config: Path | None = None) -> RunResult:
     _configure_runtime(config)
     device = _select_device(config)
@@ -86,6 +125,11 @@ def run_training(config: TrainerConfig, *, source_config: Path | None = None) ->
             "started_at": datetime.now(timezone.utc).isoformat(),
             "config_sha256": config_digest,
             "architecture_sha256": architecture_digest,
+            "initial_backbone_sha256": (
+                sha256_file(config.backbone.initial_checkpoint)
+                if config.backbone.initial_checkpoint is not None
+                else None
+            ),
             "dataset": data.summary,
             "environment": _environment(device),
             "environment_history": [_environment(device)],
@@ -104,6 +148,10 @@ def run_training(config: TrainerConfig, *, source_config: Path | None = None) ->
             config.backbone.arc_scale,
             config.backbone.arc_margin,
         ).to(device)
+        if config.backbone.initial_checkpoint is not None:
+            _load_initial_backbone(
+                config.backbone.initial_checkpoint, backbone, head, device
+            )
         eval_transform = build_eval_transform(config.model.input_size)
         backbone, head, global_step = _train_backbone(
             config,
