@@ -91,9 +91,30 @@ def _validation_line(validation: ValidationMetrics) -> str:
     )
 
 
+def _assert_determinism_supported(config: TrainerConfig, device: torch.device) -> None:
+    """Reject a config that cannot finish, before it burns hours of GPU time.
+
+    The joint stage backpropagates through the canonicalizer's grid_sample, and
+    grid_sampler_2d_backward_cuda has no deterministic implementation. Left
+    unchecked, run.deterministic on CUDA trains the whole backbone and pose
+    stages and only then dies at the first joint step.
+    """
+    if config.run.deterministic and device.type == "cuda":
+        raise ValueError(
+            "run.deterministic = true is not supported on CUDA: the SO(2) "
+            "canonicalizer backpropagates through grid_sample, and "
+            "grid_sampler_2d_backward_cuda has no deterministic implementation, "
+            "so the joint stage cannot run. Set run.deterministic = false "
+            "(seeds are still fixed, and runtime.precision is unaffected), or "
+            "set runtime.device = \"cpu\"."
+        )
+
+
+
 def run_training(config: TrainerConfig, *, source_config: Path | None = None) -> RunResult:
     _configure_runtime(config)
     device = _select_device(config)
+    _assert_determinism_supported(config, device)
     data = load_data(config.data, config.sampler, config.run.seed)
     output = _prepare_output(config, data)
     checkpoint_root = output / "checkpoints"

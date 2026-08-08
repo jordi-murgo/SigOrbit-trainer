@@ -4,7 +4,7 @@ schema_version = 1
 name = "synthetic-smoke"
 output_dir = "../../sigorbit-trainer-runs/synthetic-smoke"
 seed = 0
-deterministic = true
+deterministic = false
 
 [data]
 kind = "synthetic"
@@ -34,7 +34,7 @@ persons_per_batch = 2
 samples_per_person = 2
 
 [runtime]
-device = "cpu"
+device = "auto"
 precision = "fp32"
 workers = 0
 validation_batch_size = 4
