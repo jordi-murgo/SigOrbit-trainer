@@ -124,8 +124,7 @@ class RuntimeConfig(StrictModel):
 
 
 class BackboneStageConfig(StrictModel):
-    epochs: int = Field(default=40, ge=0, le=500)
-    initial_checkpoint: Path | None = None
+    epochs: int = Field(default=40, ge=1, le=500)
     lr: float = Field(default=1e-3, gt=0, le=1.0, allow_inf_nan=False)
     weight_decay: float = Field(default=1e-4, ge=0, le=1.0, allow_inf_nan=False)
     warmup_epochs: int = Field(default=2, ge=0, le=100)
@@ -237,9 +236,7 @@ class TrainerConfig(StrictModel):
 
     @model_validator(mode="after")
     def validate_epochs(self) -> TrainerConfig:
-        if self.backbone.epochs == 0 and self.backbone.initial_checkpoint is None:
-            raise ValueError("backbone.epochs=0 requires backbone.initial_checkpoint")
-        if self.backbone.epochs and self.backbone.warmup_epochs > self.backbone.epochs:
+        if self.backbone.warmup_epochs > self.backbone.epochs:
             raise ValueError("backbone warmup_epochs cannot exceed epochs")
         if self.joint.warmup_epochs > self.joint.epochs:
             raise ValueError("joint warmup_epochs cannot exceed epochs")
@@ -257,8 +254,6 @@ def load_config(path: Path, *, split_seed: int | None = None) -> TrainerConfig:
         raw["data"]["rights_attestation"] = Path(raw["data"]["rights_attestation"])
     raw["model"]["widths"] = tuple(raw["model"]["widths"])
     raw["backbone"]["discrete_rotations_deg"] = tuple(raw["backbone"]["discrete_rotations_deg"])
-    if raw["backbone"].get("initial_checkpoint") is not None:
-        raw["backbone"]["initial_checkpoint"] = Path(raw["backbone"]["initial_checkpoint"])
     raw["evaluation"]["rotation_angles_degrees"] = tuple(
         raw["evaluation"]["rotation_angles_degrees"]
     )
@@ -287,10 +282,6 @@ def load_config(path: Path, *, split_seed: int | None = None) -> TrainerConfig:
                 "rights_attestation": _resolve(base, config.data.rights_attestation),
             }
         )
-    if config.backbone.initial_checkpoint is not None:
-        updates["backbone"] = config.backbone.model_copy(
-            update={"initial_checkpoint": _resolve(base, config.backbone.initial_checkpoint)}
-        )
     return config.model_copy(update=updates)
 
 
@@ -305,8 +296,6 @@ def canonical_config(config: TrainerConfig) -> bytes:
     if payload["data"]["kind"] == "local_manifest":
         payload["data"]["manifest"] = "<DATASET_MANIFEST>"
         payload["data"]["rights_attestation"] = "<RIGHTS_ATTESTATION>"
-    if payload["backbone"]["initial_checkpoint"] is not None:
-        payload["backbone"]["initial_checkpoint"] = "<INITIAL_BACKBONE>"
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
 
 
