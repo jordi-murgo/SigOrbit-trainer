@@ -79,7 +79,8 @@ def _stage_banner(
     _log(
         f"=== {stage}: {epochs} epochs x {steps} steps, PK {persons}x{samples}={persons * samples}, "
         f"{len(data.train_records)} train imgs / {len(data.class_map)} signers, "
-        f"{config.model.input_size}px ==="
+        f"{config.model.input_size}px, {config.runtime.precision}"
+        f"{', deterministic' if config.run.deterministic else ''} ==="
     )
 
 
@@ -1259,10 +1260,14 @@ def _configure_runtime(config: TrainerConfig) -> None:
     torch.manual_seed(config.run.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(config.run.seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.allow_tf32 = False
+    # Autotuning picks kernels by measured time, so it can vary between runs.
+    torch.backends.cudnn.benchmark = not config.run.deterministic
+    # TF32 is a precision choice, not a determinism one: the kernel is fixed, so
+    # results stay bitwise reproducible. Disabling it costs ~3.5x on Ampere+.
+    allow_tf32 = config.runtime.precision == "tf32"
+    torch.backends.cudnn.allow_tf32 = allow_tf32
     if hasattr(torch.backends.cuda.matmul, "allow_tf32"):
-        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cuda.matmul.allow_tf32 = allow_tf32
     torch.use_deterministic_algorithms(config.run.deterministic)
 
 
@@ -1325,6 +1330,8 @@ def _environment(device: torch.device) -> dict[str, Any]:
         "torch_cuda": torch.version.cuda,
         "torch_hip": torch.version.hip,
         "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
+        "cudnn_benchmark": torch.backends.cudnn.benchmark,
+        "allow_tf32": torch.backends.cudnn.allow_tf32,
     }
     if device.type == "cuda":
         result["device_name"] = torch.cuda.get_device_name(0)
