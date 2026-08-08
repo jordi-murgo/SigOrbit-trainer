@@ -21,11 +21,11 @@ else
   echo "state: STOPPED"
 fi
 echo "gpu:   $(nvidia-smi --query-gpu=utilization.gpu,memory.used,power.draw --format=csv,noheader)"
-echo "--- last epochs ---"
-grep -E 'epoch [0-9]+:|stage|completed|Error|Traceback' "$LOG" 2>/dev/null | tail -8 \
-  || echo "(no epoch lines yet)"
-echo "--- current ---"
-grep -E 'step [0-9]+/' "$LOG" 2>/dev/null | tail -1 || echo "(no step lines yet)"
+echo "--- stages / epochs ---"
+grep -E '===|  epoch [0-9]+/|  pretrain [0-9]+/|early stop|best joint|Error|Traceback' "$LOG" 2>/dev/null \
+  | tail -10 || echo "(nothing yet)"
+echo "--- current step ---"
+grep -E '^[0-9:]+ +ep[0-9]+ [0-9]+/' "$LOG" 2>/dev/null | tail -1 || echo "(no step lines yet)"
 EOF
   grep -v "Warning: Permanently added"
 }
