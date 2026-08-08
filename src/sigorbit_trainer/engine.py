@@ -63,6 +63,33 @@ class RunResult:
         self.metrics = metrics
 
 
+def _log(message: str) -> None:
+    """Timestamped progress line; runs last hours, so wall clock beats step counts.
+
+    Layout follows spike-signature's finetune_equivariant.py / finetune_canonicalized.py
+    so their logs and these stay directly comparable line by line.
+    """
+    print(f"{datetime.now().strftime('%H:%M:%S')} {message}", flush=True)
+
+
+def _stage_banner(
+    stage: str, epochs: int, steps: int, config: TrainerConfig, data: DatasetBundle
+) -> None:
+    persons, samples = config.sampler.persons_per_batch, config.sampler.samples_per_person
+    _log(
+        f"=== {stage}: {epochs} epochs x {steps} steps, PK {persons}x{samples}={persons * samples}, "
+        f"{len(data.train_records)} train imgs / {len(data.class_map)} signers, "
+        f"{config.model.input_size}px ==="
+    )
+
+
+def _validation_line(validation: ValidationMetrics) -> str:
+    return (
+        f"val top-1 {validation.top1:.1f}%  top-5 {validation.top5:.1f}%  "
+        f"margin {validation.median_margin:+.4f}  fragile {validation.fragile_percent:.1f}%"
+    )
+
+
 def run_training(config: TrainerConfig, *, source_config: Path | None = None) -> RunResult:
     _configure_runtime(config)
     device = _select_device(config)
@@ -653,11 +680,10 @@ def _train_backbone(
     transform = build_train_transform(
         config.model.input_size, discrete_angles=config.backbone.discrete_rotations_deg
     )
+    _stage_banner("backbone", config.backbone.epochs, steps, config, data)
     for epoch in range(start_epoch, config.backbone.epochs):
         if bad_epochs >= config.backbone.patience:
-            print(
-                f"backbone stage already stopped; patience={config.backbone.patience}", flush=True
-            )
+            _log(f"backbone stopped early; patience={config.backbone.patience} exhausted")
             break
         head.margin = _margin(
             epoch,
@@ -689,9 +715,11 @@ def _train_backbone(
             correct += int((logits.argmax(dim=1) == labels).sum())
             seen += labels.shape[0]
             if (batch_index + 1) % config.runtime.log_every_steps == 0:
-                print(
-                    f"backbone epoch {epoch + 1}/{config.backbone.epochs} step {batch_index + 1}/{len(loader)} loss={loss_sum / seen:.4f}",
-                    flush=True,
+                _log(
+                    f"    ep{epoch + 1} {batch_index + 1}/{len(loader)}  "
+                    f"loss {loss_sum / seen:.3f}  acc {correct / seen * 100:.1f}%  "
+                    f"m={head.margin:.2f}  lr={scheduler.get_last_lr()[0]:.2e}  "
+                    f"({time.monotonic() - started:.0f}s)"
                 )
         validation = _validate(config, data, model, eval_transform, device)
         improved = validation.score() > best_score
@@ -731,11 +759,16 @@ def _train_backbone(
             mark_best=improved,
             device=device,
         )
-        print(
-            f"backbone epoch {epoch + 1}: val_top1={validation.top1:.2f}% margin={validation.median_margin:+.4f}",
-            flush=True,
+        _log(
+            f"  epoch {epoch + 1}/{config.backbone.epochs}  "
+            f"loss {epoch_metrics['loss']:.3f}  "
+            f"train-acc {epoch_metrics['train_accuracy']:.1f}%  |  "
+            f"{_validation_line(validation)}  "
+            f"({epoch_metrics['seconds']:.0f}s)"
+            f"{'  <-- best, saved' if improved else f'  (bad {bad_epochs}/{config.backbone.patience})'}"
         )
         if bad_epochs >= config.backbone.patience:
+            _log(f"  early stop: no val improvement in {config.backbone.patience} epochs")
             break
     best = load_checkpoint(resolve_pointer(checkpoint_root, "best-backbone"))
     _restore_model_head(best, model, head)
@@ -776,6 +809,10 @@ def _train_pose(
         global_step = resume.metadata.global_step
         start_epoch = resume.metadata.epoch_completed + 1
     transform = build_train_transform(config.model.input_size, discrete_angles=None)
+    _log(
+        f"=== canonicalizer pretraining: {config.pose.epochs} epochs, "
+        f"rot +-{config.pose.start_max_degrees:.0f}deg -> +-{config.pose.end_max_degrees:.0f}deg ==="
+    )
     for epoch in range(start_epoch, config.pose.epochs):
         maximum = config.pose.start_max_degrees + (epoch / max(1, config.pose.epochs - 1)) * (
             config.pose.end_max_degrees - config.pose.start_max_degrees
@@ -837,9 +874,11 @@ def _train_pose(
             mark_best=True,
             device=device,
         )
-        print(
-            f"pose epoch {epoch + 1}/{config.pose.epochs}: loss={metrics['loss']:.4f} mae={metrics['mae_degrees']:.1f}deg",
-            flush=True,
+        _log(
+            f"  pretrain {epoch + 1}/{config.pose.epochs}  "
+            f"rot=+-{metrics['maximum_degrees']:.0f}deg  "
+            f"loss {metrics['loss']:.4f}  MAE {metrics['mae_degrees']:.1f}deg  "
+            f"({metrics['seconds']:.0f}s)"
         )
     return global_step
 
@@ -917,9 +956,12 @@ def _train_joint(
         bad_epochs = int(resume.metadata.metrics.get("bad_epochs", 0))
     transform = build_train_transform(config.model.input_size, discrete_angles=None)
     all_parameters = list(model.parameters()) + list(head.parameters())
+    _stage_banner("joint", config.joint.epochs, len(data.train_records) // (
+        config.sampler.persons_per_batch * config.sampler.samples_per_person
+    ), config, data)
     for epoch in range(start_epoch, config.joint.epochs):
         if bad_epochs >= config.joint.patience:
-            print(f"joint stage already stopped; patience={config.joint.patience}", flush=True)
+            _log(f"joint stopped early; patience={config.joint.patience} exhausted")
             break
         maximum = config.joint.rotation_start_degrees + min(
             1.0, epoch / config.joint.rotation_curriculum_epochs
@@ -933,7 +975,7 @@ def _train_joint(
         loader = _train_loader(config, data, transform, "joint", epoch, device)
         model.train()
         head.train()
-        total_sum = arc_sum = orient_sum = consistency_sum = mae_sum = seen = 0
+        total_sum = arc_sum = orient_sum = consistency_sum = mae_sum = seen = correct = 0
         started = time.monotonic()
         for batch_index, (images, labels) in enumerate(loader):
             images, labels = (
@@ -979,11 +1021,15 @@ def _train_joint(
             orient_sum += orient.item() * batch_size
             consistency_sum += consistency.item() * batch_size
             mae_sum += mae.item() * batch_size
+            correct += int((clean_logits.argmax(dim=1) == labels).sum())
             seen += batch_size
             if (batch_index + 1) % config.runtime.log_every_steps == 0:
-                print(
-                    f"joint epoch {epoch + 1}/{config.joint.epochs} step {batch_index + 1}/{len(loader)} loss={total_sum / seen:.4f}",
-                    flush=True,
+                _log(
+                    f"    ep{epoch + 1} {batch_index + 1}/{len(loader)}  "
+                    f"arc {arc_sum / seen:.3f}  acc {correct / seen * 100:.1f}%  "
+                    f"m={head.margin:.2f}  orient {orient_sum / seen:.4f}  "
+                    f"mae {mae_sum / seen:.1f}deg  consist {consistency_sum / seen:.4f}  "
+                    f"({time.monotonic() - started:.0f}s)"
                 )
         validation = _validate(config, data, model, eval_transform, device)
         improved = validation.score() > best_score
@@ -993,6 +1039,7 @@ def _train_joint(
             bad_epochs += 1
         metrics = {
             "loss": total_sum / seen,
+            "train_accuracy": correct / seen * 100.0,
             "arc_loss": arc_sum / seen,
             "orientation_loss": orient_sum / seen,
             "consistency_loss": consistency_sum / seen,
@@ -1025,13 +1072,25 @@ def _train_joint(
             mark_best=improved,
             device=device,
         )
-        print(
-            f"joint epoch {epoch + 1}: val_top1={validation.top1:.2f}% margin={validation.median_margin:+.4f}",
-            flush=True,
+        _log(
+            f"  epoch {epoch + 1}/{config.joint.epochs}  "
+            f"rot=+-{metrics['maximum_degrees']:.0f}deg  "
+            f"arc {metrics['arc_loss']:.3f}  "
+            f"train-acc {metrics['train_accuracy']:.1f}%  |  "
+            f"{_validation_line(validation)}  "
+            f"({metrics['seconds']:.0f}s)"
+            f"{'  <-- best, saved' if improved else f'  (bad {bad_epochs}/{config.joint.patience})'}"
         )
         if bad_epochs >= config.joint.patience:
+            _log(f"  early stop: no val improvement in {config.joint.patience} epochs")
             break
     best = load_checkpoint(resolve_pointer(checkpoint_root, "best-joint"))
+    _log(
+        f"best joint: epoch {best.metadata.epoch_completed + 1}  "
+        f"top-1 {best.metadata.metrics.get('top1', float('nan')):.1f}%  "
+        f"margin {best.metadata.metrics.get('median_margin', float('nan')):+.4f}  "
+        f"({best.path.name})"
+    )
     _restore_model_head(best, model, head)
     return model, head, global_step
 
