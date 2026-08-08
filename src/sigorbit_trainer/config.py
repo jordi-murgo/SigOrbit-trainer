@@ -257,6 +257,8 @@ def load_config(path: Path, *, split_seed: int | None = None) -> TrainerConfig:
         raw["data"]["rights_attestation"] = Path(raw["data"]["rights_attestation"])
     raw["model"]["widths"] = tuple(raw["model"]["widths"])
     raw["backbone"]["discrete_rotations_deg"] = tuple(raw["backbone"]["discrete_rotations_deg"])
+    if raw["backbone"].get("initial_checkpoint") is not None:
+        raw["backbone"]["initial_checkpoint"] = Path(raw["backbone"]["initial_checkpoint"])
     raw["evaluation"]["rotation_angles_degrees"] = tuple(
         raw["evaluation"]["rotation_angles_degrees"]
     )
@@ -285,6 +287,10 @@ def load_config(path: Path, *, split_seed: int | None = None) -> TrainerConfig:
                 "rights_attestation": _resolve(base, config.data.rights_attestation),
             }
         )
+    if config.backbone.initial_checkpoint is not None:
+        updates["backbone"] = config.backbone.model_copy(
+            update={"initial_checkpoint": _resolve(base, config.backbone.initial_checkpoint)}
+        )
     return config.model_copy(update=updates)
 
 
@@ -299,6 +305,8 @@ def canonical_config(config: TrainerConfig) -> bytes:
     if payload["data"]["kind"] == "local_manifest":
         payload["data"]["manifest"] = "<DATASET_MANIFEST>"
         payload["data"]["rights_attestation"] = "<RIGHTS_ATTESTATION>"
+    if payload["backbone"]["initial_checkpoint"] is not None:
+        payload["backbone"]["initial_checkpoint"] = "<INITIAL_BACKBONE>"
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
 
 
