@@ -193,6 +193,11 @@ class JointStageConfig(StrictModel):
 class EvaluationConfig(StrictModel):
     rotation_angles_degrees: tuple[float, ...] = (0.0, 15.0, 30.0, 45.0, 90.0, 180.0)
     fragile_margin: float = Field(default=0.05, ge=-2, le=2, allow_inf_nan=False)
+    # Once top-1 clears this floor, checkpoint selection ranks on margin alone.
+    # Near saturation a top-1 gap is a couple of validation images and sits
+    # inside binomial noise, while the margin is what decides auto-accept
+    # coverage. Below the floor, top-1 still leads.
+    selection_top1_floor: float = Field(default=99.0, ge=0.0, le=100.0, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def validate_rotations(self) -> EvaluationConfig:

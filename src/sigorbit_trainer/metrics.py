@@ -23,8 +23,16 @@ class ValidationMetrics:
     fragile_percent: float
     count: int
 
-    def score(self) -> tuple[float, float]:
-        return round(self.top1, 2), self.median_margin
+    def score(self, top1_floor: float = 100.0) -> tuple[float, float]:
+        """Ranking key for checkpoint selection: higher is better.
+
+        Clamping top-1 at `top1_floor` makes every checkpoint at or above the
+        floor compare purely on margin, so a one- or two-image top-1 wobble
+        cannot discard a materially better-separated model. Below the floor
+        top-1 still dominates, because there accuracy is a real deficit rather
+        than sampling noise.
+        """
+        return min(round(self.top1, 2), top1_floor), self.median_margin
 
     def to_dict(self) -> dict[str, float | int]:
         return {

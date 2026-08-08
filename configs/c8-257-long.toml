@@ -76,6 +76,7 @@ patience = 16
 [evaluation]
 rotation_angles_degrees = [0.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 90.0, 120.0, 150.0, 180.0]
 fragile_margin = 0.05
+selection_top1_floor = 99.0
 
 [export]
 filename = "sigorbit-c8-257-retrained-v1.pt"

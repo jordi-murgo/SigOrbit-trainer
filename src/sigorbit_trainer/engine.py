@@ -658,7 +658,7 @@ def _train_backbone(
     )
     if resume is None:
         validation = _validate(config, data, model, eval_transform, device)
-        best_score = validation.score()
+        best_score = validation.score(config.evaluation.selection_top1_floor)
         global_step = 0
         start_epoch = 0
         bad_epochs = 0
@@ -744,9 +744,9 @@ def _train_backbone(
                     f"({time.monotonic() - started:.0f}s)"
                 )
         validation = _validate(config, data, model, eval_transform, device)
-        improved = validation.score() > best_score
+        improved = validation.score(config.evaluation.selection_top1_floor) > best_score
         if improved:
-            best_score, bad_epochs = validation.score(), 0
+            best_score, bad_epochs = validation.score(config.evaluation.selection_top1_floor), 0
         else:
             bad_epochs += 1
         epoch_metrics = {
@@ -936,7 +936,7 @@ def _train_joint(
     )
     if resume is None:
         validation = _validate(config, data, model, eval_transform, device)
-        best_score = validation.score()
+        best_score = validation.score(config.evaluation.selection_top1_floor)
         start_epoch = 0
         bad_epochs = 0
         save_checkpoint(
@@ -1054,9 +1054,9 @@ def _train_joint(
                     f"({time.monotonic() - started:.0f}s)"
                 )
         validation = _validate(config, data, model, eval_transform, device)
-        improved = validation.score() > best_score
+        improved = validation.score(config.evaluation.selection_top1_floor) > best_score
         if improved:
-            best_score, bad_epochs = validation.score(), 0
+            best_score, bad_epochs = validation.score(config.evaluation.selection_top1_floor), 0
         else:
             bad_epochs += 1
         metrics = {
