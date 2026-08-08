@@ -27,3 +27,40 @@ The training protocol currently rejects forgeries.
 The rights attestation is strict JSON, stored outside Git, and bound to the
 SHA-256 of `dataset.toml`. It records an operator assertion; it neither embeds
 permission documents nor grants rights.
+
+## Randomized writer-level splits
+
+A manifest's own split layout is often arbitrary, and a single fixed partition
+can hide overfitting to that particular set of writers. The trainer can
+repartition **in memory** without ever rewriting the manifest:
+
+```toml
+[data.split]
+strategy = "random_by_signer"
+seed = 1234
+train_fraction = 0.7
+validation_fraction = 0.15
+test_fraction = 0.15
+```
+
+```bash
+sigorbit-train dataset split-preview CONFIG.toml --random-seed 1234
+sigorbit-train run CONFIG.toml --random-seed 1234
+```
+
+Rules enforced by the implementation:
+
+- splits are assigned **per signer**, never per sample, so a writer's images
+  cannot straddle train, validation, and test;
+- ordering comes from `sha256(seed, signer_id)`, so the result is reproducible
+  and independent of manifest order;
+- `source_group` must not span signers, otherwise the split is refused;
+- fractions must sum to exactly 1.0 and use largest-remainder allocation, with
+  at least two signers guaranteed for train and validation;
+- every signer needs at least `max(2, K)` genuine samples;
+- the seed and resulting assignment digest enter the dataset fingerprint, so a
+  resume under a different split fails closed instead of silently continuing.
+
+`--random-seed` is recorded in the resolved configuration and its digest, so the
+partition stays auditable. Repeated runs under different seeds are the intended
+way to report mean and spread rather than a single lucky partition.

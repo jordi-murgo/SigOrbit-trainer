@@ -94,6 +94,20 @@ Read [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md),
 [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md), and
 [`docs/MODEL_RELEASE_POLICY.md`](docs/MODEL_RELEASE_POLICY.md) before training.
 
+## Randomized splits
+
+Manifest splits can be repartitioned by writer before training, which is the
+recommended way to check that a result is not an artefact of one partition:
+
+```bash
+sigorbit-train dataset split-preview CONFIG.toml --random-seed 1234
+sigorbit-train run CONFIG.toml --random-seed 1234
+```
+
+Splits move whole signers, never individual samples, and the seed enters the
+dataset fingerprint so a resume cannot silently change the partition. See
+[`docs/DATASET_MANIFEST.md`](docs/DATASET_MANIFEST.md).
+
 ## Evaluation
 
 Training reports clean leave-one-out retrieval plus per-angle top-1, median

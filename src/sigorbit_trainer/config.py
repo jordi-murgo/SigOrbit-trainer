@@ -36,6 +36,23 @@ class SyntheticDataConfig(StrictModel):
     canvas_height: int = Field(default=80, ge=32, le=1024)
 
 
+class SplitConfig(StrictModel):
+    """Deterministic writer-level repartitioning applied in memory."""
+
+    strategy: Literal["manifest", "random_by_signer"] = "manifest"
+    seed: int = Field(default=0, ge=0, le=2**31 - 1)
+    train_fraction: float = Field(default=0.7, gt=0.0, lt=1.0, allow_inf_nan=False)
+    validation_fraction: float = Field(default=0.15, gt=0.0, lt=1.0, allow_inf_nan=False)
+    test_fraction: float = Field(default=0.15, ge=0.0, lt=1.0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_fractions(self) -> SplitConfig:
+        total = self.train_fraction + self.validation_fraction + self.test_fraction
+        if abs(total - 1.0) > 1e-9:
+            raise ValueError("split fractions must sum to exactly 1.0")
+        return self
+
+
 class DataConfig(StrictModel):
     kind: Literal["local_manifest", "synthetic"]
     manifest: Path | None = None
@@ -47,6 +64,7 @@ class DataConfig(StrictModel):
     max_file_bytes: int = Field(default=16 * 1024 * 1024, ge=1024, le=128 * 1024 * 1024)
     max_pixels: int = Field(default=16_777_216, ge=1024, le=67_108_864)
     synthetic: SyntheticDataConfig | None = None
+    split: SplitConfig = SplitConfig()
 
     @model_validator(mode="after")
     def validate_kind(self) -> DataConfig:
@@ -225,7 +243,7 @@ class TrainerConfig(StrictModel):
         return self
 
 
-def load_config(path: Path) -> TrainerConfig:
+def load_config(path: Path, *, split_seed: int | None = None) -> TrainerConfig:
     source = path.expanduser().resolve(strict=True)
     with source.open("rb") as handle:
         raw = tomllib.load(handle)
@@ -240,6 +258,18 @@ def load_config(path: Path) -> TrainerConfig:
         raw["evaluation"]["rotation_angles_degrees"]
     )
     config = TrainerConfig.model_validate(raw)
+    if split_seed is not None:
+        if config.data.split.strategy != "random_by_signer":
+            raise ValueError(
+                'a split seed override requires [data.split] strategy = "random_by_signer"'
+            )
+        config = config.model_copy(
+            update={
+                "data": config.data.model_copy(
+                    update={"split": config.data.split.model_copy(update={"seed": split_seed})}
+                )
+            }
+        )
     base = source.parent
     updates: dict[str, object] = {
         "run": config.run.model_copy(update={"output_dir": _resolve(base, config.run.output_dir)})

@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 import random
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from .config import DataConfig, SamplerConfig
+from .config import DataConfig, SamplerConfig, SplitConfig
 from .manifest import SampleRecord, ValidatedManifest, open_validated_image, validate_manifest
 
 
@@ -125,6 +125,118 @@ class SyntheticSource:
 
 
 @dataclass(frozen=True)
+class ResplitSource:
+    """Wraps a source and serves an in-memory writer-level repartition."""
+
+    base: ImageSource
+    reassigned: tuple[SampleRecord, ...]
+    split_fingerprint: str
+
+    @property
+    def fingerprint(self) -> str:
+        combined = f"{self.base.fingerprint}|split:{self.split_fingerprint}"
+        return "sha256:" + hashlib.sha256(combined.encode()).hexdigest()
+
+    def records(self, split: str) -> tuple[SampleRecord, ...]:
+        return tuple(
+            record
+            for record in self.reassigned
+            if record.split == split and record.kind == "genuine"
+        )
+
+    def open_image(self, record: SampleRecord) -> Image.Image:
+        return self.base.open_image(record)
+
+
+def _signer_order(signer_id: str, seed: int) -> str:
+    """Stable per-signer ordering key; independent of manifest order."""
+    return hashlib.sha256(f"sigorbit-split-v1:{seed}:{signer_id}".encode()).hexdigest()
+
+
+def _allocate(total: int, policy: SplitConfig) -> tuple[int, int, int]:
+    """Largest-remainder allocation with at least two signers for train/validation."""
+    if total < 4:
+        raise ValueError("random_by_signer requires at least four distinct signers")
+    fractions = (policy.train_fraction, policy.validation_fraction, policy.test_fraction)
+    exact = [total * fraction for fraction in fractions]
+    counts = [int(value) for value in exact]
+    remainder = total - sum(counts)
+    order = sorted(range(3), key=lambda i: (-(exact[i] - counts[i]), i))
+    for index in order[:remainder]:
+        counts[index] += 1
+    # Guarantee a usable protocol: train and validation must both be populated.
+    while counts[0] < 2:
+        donor = 2 if counts[2] > 0 else 1
+        if counts[donor] <= (2 if donor == 1 else 0):
+            raise ValueError("split fractions leave too few signers for training")
+        counts[donor] -= 1
+        counts[0] += 1
+    while counts[1] < 2:
+        donor = 2 if counts[2] > 0 else 0
+        if counts[donor] <= (2 if donor == 0 else 0):
+            raise ValueError("split fractions leave too few signers for validation")
+        counts[donor] -= 1
+        counts[1] += 1
+    return counts[0], counts[1], counts[2]
+
+
+def apply_split_policy(
+    records: tuple[SampleRecord, ...], policy: SplitConfig
+) -> tuple[tuple[SampleRecord, ...], dict[str, object]]:
+    """Reassign whole signers to splits in memory; the manifest is never rewritten."""
+    if policy.strategy == "manifest":
+        return records, {"strategy": "manifest"}
+
+    signer_groups: dict[str, list[SampleRecord]] = defaultdict(list)
+    for record in records:
+        signer_groups[record.signer_id].append(record)
+    # A source group crossing signers cannot be kept intact by a writer-level split.
+    source_owners: dict[str, set[str]] = defaultdict(set)
+    for record in records:
+        source_owners[record.source_group].add(record.signer_id)
+    straddling = sorted(group for group, owners in source_owners.items() if len(owners) > 1)
+    if straddling:
+        raise ValueError(
+            "random_by_signer requires each source_group to belong to a single signer; "
+            f"{len(straddling)} group(s) span multiple signers"
+        )
+
+    signers = sorted(signer_groups)
+    ordered = sorted(signers, key=lambda signer: (_signer_order(signer, policy.seed), signer))
+    train_count, validation_count, test_count = _allocate(len(ordered), policy)
+    assignment: dict[str, str] = {}
+    for index, signer in enumerate(ordered):
+        if index < train_count:
+            assignment[signer] = "train"
+        elif index < train_count + validation_count:
+            assignment[signer] = "validation"
+        else:
+            assignment[signer] = "test"
+
+    reassigned = tuple(
+        record.model_copy(update={"split": assignment[record.signer_id]}) for record in records
+    )
+    fingerprint = hashlib.sha256(
+        json.dumps(
+            {"seed": policy.seed, "assignment": assignment},
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    summary: dict[str, object] = {
+        "strategy": "random_by_signer",
+        "seed": policy.seed,
+        "signers": {
+            "train": train_count,
+            "validation": validation_count,
+            "test": test_count,
+        },
+        "assignment_sha256": fingerprint,
+    }
+    return reassigned, summary
+
+
+@dataclass(frozen=True)
 class DatasetBundle:
     source: ImageSource
     train_records: tuple[SampleRecord, ...]
@@ -203,11 +315,22 @@ def load_data(config: DataConfig, sampler: SamplerConfig, seed: int) -> DatasetB
             max_file_bytes=config.max_file_bytes,
             max_pixels=config.max_pixels,
             minimum_train_samples=sampler.samples_per_person,
+            enforce_split_layout=config.split.strategy == "manifest",
         )
         source = LocalManifestSource(validated)
         permitted_purpose = validated.permitted_purpose
         attestation_sha256 = validated.attestation_sha256
 
+    all_records = tuple(
+        record for split in ("train", "validation", "test") for record in source.records(split)
+    )
+    reassigned, split_summary = apply_split_policy(all_records, config.split)
+    if config.split.strategy != "manifest":
+        source = ResplitSource(
+            base=source,
+            reassigned=reassigned,
+            split_fingerprint=str(split_summary["assignment_sha256"]),
+        )
     train_records = source.records("train")
     validation_records = source.records("validation")
     if not train_records or not validation_records:
@@ -236,6 +359,7 @@ def load_data(config: DataConfig, sampler: SamplerConfig, seed: int) -> DatasetB
         "class_map_sha256": hashlib.sha256(class_bytes).hexdigest(),
         "attestation_sha256": attestation_sha256,
         "permitted_purpose": permitted_purpose,
+        "split": split_summary,
     }
     return DatasetBundle(
         source=source,

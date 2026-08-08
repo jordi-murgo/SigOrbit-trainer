@@ -153,6 +153,16 @@
           "default": null,
           "title": "Rights Attestation"
         },
+        "split": {
+          "$ref": "#/$defs/SplitConfig",
+          "default": {
+            "seed": 0,
+            "strategy": "manifest",
+            "test_fraction": 0.15,
+            "train_fraction": 0.7,
+            "validation_fraction": 0.15
+          }
+        },
         "synthetic": {
           "anyOf": [
             {
@@ -582,6 +592,51 @@
         }
       },
       "title": "SamplerConfig",
+      "type": "object"
+    },
+    "SplitConfig": {
+      "additionalProperties": false,
+      "description": "Deterministic writer-level repartitioning applied in memory.",
+      "properties": {
+        "seed": {
+          "default": 0,
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "strategy": {
+          "default": "manifest",
+          "enum": [
+            "manifest",
+            "random_by_signer"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "test_fraction": {
+          "default": 0.15,
+          "exclusiveMaximum": 1.0,
+          "minimum": 0.0,
+          "title": "Test Fraction",
+          "type": "number"
+        },
+        "train_fraction": {
+          "default": 0.7,
+          "exclusiveMaximum": 1.0,
+          "exclusiveMinimum": 0.0,
+          "title": "Train Fraction",
+          "type": "number"
+        },
+        "validation_fraction": {
+          "default": 0.15,
+          "exclusiveMaximum": 1.0,
+          "exclusiveMinimum": 0.0,
+          "title": "Validation Fraction",
+          "type": "number"
+        }
+      },
+      "title": "SplitConfig",
       "type": "object"
     },
     "SyntheticDataConfig": {

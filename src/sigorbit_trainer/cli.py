@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .checkpoint import load_checkpoint
 from .config import TrainerConfig, config_sha256, load_config
+from .data import load_data
 from .engine import evaluate_checkpoint, resume_training, run_training
 from .manifest import create_rights_attestation, validate_manifest
 from .materialize import import_hf_disk
@@ -58,11 +59,24 @@ def build_parser() -> argparse.ArgumentParser:
     dataset_attest.add_argument("--authorization-reference", required=True)
     dataset_attest.add_argument("--assert-authorized-use", action="store_true")
 
+    dataset_preview = dataset_sub.add_parser(
+        "split-preview", help="show the writer-level split a seed would produce"
+    )
+    dataset_preview.add_argument("config", type=Path)
+    dataset_preview.add_argument("--random-seed", type=int, default=None)
+
     run_parser = subparsers.add_parser("run", help="start a new three-stage run")
     run_parser.add_argument("config", type=Path)
+    run_parser.add_argument(
+        "--random-seed",
+        type=int,
+        default=None,
+        help="override [data.split].seed; recorded in the resolved config and digest",
+    )
     resume_parser = subparsers.add_parser("resume", help="resume at an epoch boundary")
     resume_parser.add_argument("config", type=Path)
     resume_parser.add_argument("--checkpoint", required=True, type=Path)
+    resume_parser.add_argument("--random-seed", type=int, default=None)
 
     evaluate_parser = subparsers.add_parser(
         "evaluate", help="evaluate an exported checkpoint on a manifest split"
@@ -71,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser.add_argument("--checkpoint", required=True, type=Path)
     evaluate_parser.add_argument("--split", choices=("validation", "test"), default="validation")
     evaluate_parser.add_argument("--allow-test-split", action="store_true")
+    evaluate_parser.add_argument("--random-seed", type=int, default=None)
 
     checkpoint_parser = subparsers.add_parser("checkpoint", help="recovery checkpoint operations")
     checkpoint_sub = checkpoint_parser.add_subparsers(dest="checkpoint_command", required=True)
@@ -137,8 +152,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 assert_genuine_only=args.assert_genuine_only,
             )
             return _emit(materialized, args.json_output)
+        if args.command == "dataset" and args.dataset_command == "split-preview":
+            config = load_config(args.config, split_seed=args.random_seed)
+            bundle = load_data(config.data, config.sampler, config.run.seed)
+            return _emit(
+                {
+                    "split": bundle.summary["split"],
+                    "train_samples": bundle.summary["train_samples"],
+                    "train_signers": bundle.summary["train_signers"],
+                    "validation_samples": bundle.summary["validation_samples"],
+                    "validation_signers": bundle.summary["validation_signers"],
+                    "dataset_fingerprint": bundle.summary["source_fingerprint"],
+                },
+                args.json_output,
+            )
         if args.command == "run":
-            config = load_config(args.config)
+            config = load_config(args.config, split_seed=args.random_seed)
             run_result = run_training(config, source_config=args.config)
             return _emit(
                 {
@@ -151,7 +180,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.json_output,
             )
         if args.command == "resume":
-            config = load_config(args.config)
+            config = load_config(args.config, split_seed=args.random_seed)
             resumed_result = resume_training(config, checkpoint=args.checkpoint)
             return _emit(
                 {
@@ -164,7 +193,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.json_output,
             )
         if args.command == "evaluate":
-            config = load_config(args.config)
+            config = load_config(args.config, split_seed=args.random_seed)
             report = evaluate_checkpoint(
                 config,
                 checkpoint=args.checkpoint,

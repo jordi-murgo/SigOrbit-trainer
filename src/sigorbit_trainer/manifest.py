@@ -97,6 +97,7 @@ def validate_manifest(
     max_file_bytes: int,
     max_pixels: int,
     minimum_train_samples: int,
+    enforce_split_layout: bool = True,
 ) -> ValidatedManifest:
     _reject_any_symlink(manifest_path.expanduser().absolute())
     manifest_path = manifest_path.resolve(strict=True)
@@ -133,6 +134,7 @@ def validate_manifest(
         max_file_bytes=max_file_bytes,
         max_pixels=max_pixels,
         minimum_train_samples=minimum_train_samples,
+        enforce_split_layout=enforce_split_layout,
     )
     return ValidatedManifest(
         root=root,
@@ -181,6 +183,7 @@ def _validate_records(
     max_file_bytes: int,
     max_pixels: int,
     minimum_train_samples: int,
+    enforce_split_layout: bool,
 ) -> None:
     sample_ids: set[str] = set()
     paths: set[str] = set()
@@ -214,7 +217,7 @@ def _validate_records(
         if record.split == "train" and record.kind == "genuine":
             samples_per_signer[record.signer_id] += 1
 
-    if require_disjoint:
+    if require_disjoint and enforce_split_layout:
         split_names = ("train", "validation", "test")
         for index, left in enumerate(split_names):
             for right in split_names[index + 1 :]:
@@ -223,14 +226,25 @@ def _validate_records(
                     raise ValueError(f"signer leakage between {left} and {right}")
     if any(len(splits) > 1 for splits in source_splits.values()):
         raise ValueError("source_group leakage across splits")
-    for signer, count in samples_per_signer.items():
-        if count < minimum_train_samples:
-            raise ValueError(f"train signer has fewer than K genuine samples: {signer}")
-    if len(signers["train"]) < 2 or len(signers["validation"]) < 2:
-        raise ValueError("train and validation each require at least two signers")
-    validation_counts = Counter(r.signer_id for r in records if r.split == "validation")
-    if any(count < 2 for count in validation_counts.values()):
-        raise ValueError("every validation signer requires at least two samples")
+    if enforce_split_layout:
+        for signer, count in samples_per_signer.items():
+            if count < minimum_train_samples:
+                raise ValueError(f"train signer has fewer than K genuine samples: {signer}")
+        if len(signers["train"]) < 2 or len(signers["validation"]) < 2:
+            raise ValueError("train and validation each require at least two signers")
+        validation_counts = Counter(r.signer_id for r in records if r.split == "validation")
+        if any(count < 2 for count in validation_counts.values()):
+            raise ValueError("every validation signer requires at least two samples")
+    else:
+        # A writer-level repartition ignores the manifest layout, so only the
+        # per-signer sample budget can be checked here.
+        per_signer = Counter(r.signer_id for r in records if r.kind == "genuine")
+        thin = sorted(s for s, count in per_signer.items() if count < max(2, minimum_train_samples))
+        if thin:
+            raise ValueError(
+                f"{len(thin)} signer(s) have fewer than {max(2, minimum_train_samples)} "
+                "genuine samples, which a random split cannot satisfy"
+            )
 
 
 def _validate_image(
