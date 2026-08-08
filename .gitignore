@@ -1,0 +1,38 @@
+# Environments and Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Builds
+dist/
+build/
+*.egg-info/
+
+# Never track biometric/training material
+data/
+datasets/
+runs/
+outputs/
+checkpoints/
+artifacts/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.npy
+*.npz
+*.db
+*.sqlite
+*.log
+
+# Local attestations and secrets
+*.attestation.json
+.env
+.env.*
+!.env.example

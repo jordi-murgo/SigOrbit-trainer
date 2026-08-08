@@ -1,0 +1,19 @@
+name: Bug report
+description: Report a reproducible code defect without sensitive material
+body:
+  - type: markdown
+    attributes:
+      value: "Do not upload signatures, datasets, manifests, embeddings, checkpoints, credentials, or private paths."
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Synthetic reproduction
+      description: Use only generated, non-person test data.
+    validations:
+      required: true

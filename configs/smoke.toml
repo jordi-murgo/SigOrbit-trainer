@@ -1,0 +1,89 @@
+schema_version = 1
+
+[run]
+name = "synthetic-smoke"
+output_dir = "../../sigorbit-trainer-runs/synthetic-smoke"
+seed = 0
+deterministic = true
+
+[data]
+kind = "synthetic"
+verify_hashes = true
+require_signer_disjoint_splits = true
+include_forgeries = false
+max_files = 1000
+max_file_bytes = 1048576
+max_pixels = 1048576
+
+[data.synthetic]
+train_signers = 2
+validation_signers = 2
+samples_per_signer = 2
+canvas_width = 96
+canvas_height = 48
+
+[model]
+input_size = 33
+group_order = 4
+widths = [1, 1, 1, 1]
+embedding_dim = 16
+release_compatible = false
+
+[sampler]
+persons_per_batch = 2
+samples_per_person = 2
+
+[runtime]
+device = "cpu"
+precision = "fp32"
+workers = 0
+validation_batch_size = 4
+log_every_steps = 1
+
+[backbone]
+epochs = 1
+lr = 0.001
+weight_decay = 0.0001
+warmup_epochs = 1
+arc_scale = 16.0
+arc_margin = 0.35
+margin_hold_epochs = 0
+margin_warmup_epochs = 1
+discrete_rotations_deg = [0.0, 45.0]
+patience = 1
+
+[pose]
+epochs = 1
+lr = 0.003
+weight_decay = 0.0001
+start_max_degrees = 45.0
+end_max_degrees = 45.0
+
+[joint]
+epochs = 1
+backbone_lr = 0.0003
+canonicalizer_lr = 0.001
+head_lr = 0.001
+weight_decay = 0.0001
+warmup_epochs = 1
+arc_scale = 16.0
+arc_margin = 0.35
+margin_hold_epochs = 0
+margin_warmup_epochs = 1
+rotation_start_degrees = 10.0
+rotation_end_degrees = 10.0
+rotation_curriculum_epochs = 1
+orientation_weight = 0.5
+consistency_weight = 0.5
+tensor_rotation_padding = 0.0
+patience = 1
+
+[evaluation]
+rotation_angles_degrees = [0.0, 45.0]
+fragile_margin = 0.05
+
+[export]
+filename = "sigorbit-smoke.pt"
+model_id = "sigorbit-synthetic-smoke"
+preprocess_version = "sigorbit-gray-square-33-smoke"
+weight_release_status = "private-research-only"

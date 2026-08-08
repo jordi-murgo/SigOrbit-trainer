@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use SigOrbit Trainer, cite this software and the relevant dataset and architecture papers."
+title: "SigOrbit Trainer"
+type: software
+authors:
+  - family-names: "Murgó"
+    given-names: "Jordi"
+    email: "jordi.murgo@gmail.com"
+repository-code: "https://github.com/jordi-murgo/SigOrbit-trainer"
+license: MIT
+version: 0.1.0
+date-released: "2026-08-08"

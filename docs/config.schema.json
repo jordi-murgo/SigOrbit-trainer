@@ -1,0 +1,683 @@
+{
+  "$defs": {
+    "BackboneStageConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "arc_margin": {
+          "default": 0.35,
+          "maximum": 1.5,
+          "minimum": 0,
+          "title": "Arc Margin",
+          "type": "number"
+        },
+        "arc_scale": {
+          "default": 16.0,
+          "exclusiveMinimum": 0,
+          "maximum": 128,
+          "title": "Arc Scale",
+          "type": "number"
+        },
+        "discrete_rotations_deg": {
+          "default": [
+            0.0,
+            15.0,
+            30.0,
+            45.0,
+            60.0,
+            75.0
+          ],
+          "items": {
+            "type": "number"
+          },
+          "title": "Discrete Rotations Deg",
+          "type": "array"
+        },
+        "epochs": {
+          "default": 40,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Epochs",
+          "type": "integer"
+        },
+        "lr": {
+          "default": 0.001,
+          "exclusiveMinimum": 0,
+          "maximum": 1.0,
+          "title": "Lr",
+          "type": "number"
+        },
+        "margin_hold_epochs": {
+          "default": 2,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Margin Hold Epochs",
+          "type": "integer"
+        },
+        "margin_warmup_epochs": {
+          "default": 8,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Margin Warmup Epochs",
+          "type": "integer"
+        },
+        "patience": {
+          "default": 8,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Patience",
+          "type": "integer"
+        },
+        "warmup_epochs": {
+          "default": 2,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Warmup Epochs",
+          "type": "integer"
+        },
+        "weight_decay": {
+          "default": 0.0001,
+          "maximum": 1.0,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+        }
+      },
+      "title": "BackboneStageConfig",
+      "type": "object"
+    },
+    "DataConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "include_forgeries": {
+          "default": false,
+          "title": "Include Forgeries",
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "local_manifest",
+            "synthetic"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "manifest": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Manifest"
+        },
+        "max_file_bytes": {
+          "default": 16777216,
+          "maximum": 134217728,
+          "minimum": 1024,
+          "title": "Max File Bytes",
+          "type": "integer"
+        },
+        "max_files": {
+          "default": 100000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Max Files",
+          "type": "integer"
+        },
+        "max_pixels": {
+          "default": 16777216,
+          "maximum": 67108864,
+          "minimum": 1024,
+          "title": "Max Pixels",
+          "type": "integer"
+        },
+        "require_signer_disjoint_splits": {
+          "default": true,
+          "title": "Require Signer Disjoint Splits",
+          "type": "boolean"
+        },
+        "rights_attestation": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Attestation"
+        },
+        "synthetic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SyntheticDataConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "verify_hashes": {
+          "default": true,
+          "title": "Verify Hashes",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DataConfig",
+      "type": "object"
+    },
+    "EvaluationConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "fragile_margin": {
+          "default": 0.05,
+          "maximum": 2,
+          "minimum": -2,
+          "title": "Fragile Margin",
+          "type": "number"
+        },
+        "rotation_angles_degrees": {
+          "default": [
+            0.0,
+            15.0,
+            30.0,
+            45.0,
+            90.0,
+            180.0
+          ],
+          "items": {
+            "type": "number"
+          },
+          "title": "Rotation Angles Degrees",
+          "type": "array"
+        }
+      },
+      "title": "EvaluationConfig",
+      "type": "object"
+    },
+    "ExportConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "default": "sigorbit-model.pt",
+          "pattern": "^[a-zA-Z0-9._-]+\\.pt$",
+          "title": "Filename",
+          "type": "string"
+        },
+        "model_id": {
+          "default": "sigorbit-c8-257-custom-v1",
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "preprocess_version": {
+          "default": "sigorbit-gray-square-257-v1",
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Preprocess Version",
+          "type": "string"
+        },
+        "public_approval_reference": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Public Approval Reference"
+        },
+        "weight_release_status": {
+          "default": "private-research-only",
+          "enum": [
+            "private-research-only",
+            "internal-approved",
+            "public-approved"
+          ],
+          "title": "Weight Release Status",
+          "type": "string"
+        }
+      },
+      "title": "ExportConfig",
+      "type": "object"
+    },
+    "JointStageConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "arc_margin": {
+          "default": 0.35,
+          "maximum": 1.5,
+          "minimum": 0,
+          "title": "Arc Margin",
+          "type": "number"
+        },
+        "arc_scale": {
+          "default": 16.0,
+          "exclusiveMinimum": 0,
+          "maximum": 128,
+          "title": "Arc Scale",
+          "type": "number"
+        },
+        "backbone_lr": {
+          "default": 0.0003,
+          "exclusiveMinimum": 0,
+          "maximum": 1.0,
+          "title": "Backbone Lr",
+          "type": "number"
+        },
+        "canonicalizer_lr": {
+          "default": 0.001,
+          "exclusiveMinimum": 0,
+          "maximum": 1.0,
+          "title": "Canonicalizer Lr",
+          "type": "number"
+        },
+        "consistency_weight": {
+          "default": 0.5,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Consistency Weight",
+          "type": "number"
+        },
+        "epochs": {
+          "default": 40,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Epochs",
+          "type": "integer"
+        },
+        "head_lr": {
+          "default": 0.001,
+          "exclusiveMinimum": 0,
+          "maximum": 1.0,
+          "title": "Head Lr",
+          "type": "number"
+        },
+        "margin_hold_epochs": {
+          "default": 2,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Margin Hold Epochs",
+          "type": "integer"
+        },
+        "margin_warmup_epochs": {
+          "default": 8,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Margin Warmup Epochs",
+          "type": "integer"
+        },
+        "orientation_weight": {
+          "default": 0.5,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Orientation Weight",
+          "type": "number"
+        },
+        "patience": {
+          "default": 999,
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Patience",
+          "type": "integer"
+        },
+        "rotation_curriculum_epochs": {
+          "default": 20,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Rotation Curriculum Epochs",
+          "type": "integer"
+        },
+        "rotation_end_degrees": {
+          "default": 180.0,
+          "exclusiveMinimum": 0,
+          "maximum": 180,
+          "title": "Rotation End Degrees",
+          "type": "number"
+        },
+        "rotation_start_degrees": {
+          "default": 10.0,
+          "exclusiveMinimum": 0,
+          "maximum": 180,
+          "title": "Rotation Start Degrees",
+          "type": "number"
+        },
+        "tensor_rotation_padding": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": -1,
+          "title": "Tensor Rotation Padding",
+          "type": "number"
+        },
+        "warmup_epochs": {
+          "default": 5,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Warmup Epochs",
+          "type": "integer"
+        },
+        "weight_decay": {
+          "default": 0.0001,
+          "maximum": 1.0,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+        }
+      },
+      "title": "JointStageConfig",
+      "type": "object"
+    },
+    "ModelConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "embedding_dim": {
+          "default": 256,
+          "maximum": 1024,
+          "minimum": 16,
+          "title": "Embedding Dim",
+          "type": "integer"
+        },
+        "group_order": {
+          "default": 8,
+          "maximum": 16,
+          "minimum": 2,
+          "title": "Group Order",
+          "type": "integer"
+        },
+        "input_size": {
+          "default": 257,
+          "maximum": 513,
+          "minimum": 33,
+          "title": "Input Size",
+          "type": "integer"
+        },
+        "release_compatible": {
+          "default": true,
+          "title": "Release Compatible",
+          "type": "boolean"
+        },
+        "widths": {
+          "default": [
+            24,
+            48,
+            96,
+            128
+          ],
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            }
+          ],
+          "title": "Widths",
+          "type": "array"
+        }
+      },
+      "title": "ModelConfig",
+      "type": "object"
+    },
+    "PoseStageConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "end_max_degrees": {
+          "default": 180.0,
+          "exclusiveMinimum": 0,
+          "maximum": 180,
+          "title": "End Max Degrees",
+          "type": "number"
+        },
+        "epochs": {
+          "default": 10,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Epochs",
+          "type": "integer"
+        },
+        "lr": {
+          "default": 0.003,
+          "exclusiveMinimum": 0,
+          "maximum": 1.0,
+          "title": "Lr",
+          "type": "number"
+        },
+        "start_max_degrees": {
+          "default": 45.0,
+          "exclusiveMinimum": 0,
+          "maximum": 180,
+          "title": "Start Max Degrees",
+          "type": "number"
+        },
+        "weight_decay": {
+          "default": 0.0001,
+          "maximum": 1.0,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+        }
+      },
+      "title": "PoseStageConfig",
+      "type": "object"
+    },
+    "RunConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic": {
+          "default": true,
+          "title": "Deterministic",
+          "type": "boolean"
+        },
+        "name": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "output_dir": {
+          "format": "path",
+          "title": "Output Dir",
+          "type": "string"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "output_dir",
+        "seed"
+      ],
+      "title": "RunConfig",
+      "type": "object"
+    },
+    "RuntimeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "device": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "cpu",
+            "cuda"
+          ],
+          "title": "Device",
+          "type": "string"
+        },
+        "log_every_steps": {
+          "default": 50,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Log Every Steps",
+          "type": "integer"
+        },
+        "precision": {
+          "const": "fp32",
+          "default": "fp32",
+          "title": "Precision",
+          "type": "string"
+        },
+        "validation_batch_size": {
+          "default": 16,
+          "maximum": 256,
+          "minimum": 2,
+          "title": "Validation Batch Size",
+          "type": "integer"
+        },
+        "workers": {
+          "default": 6,
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Workers",
+          "type": "integer"
+        }
+      },
+      "title": "RuntimeConfig",
+      "type": "object"
+    },
+    "SamplerConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "persons_per_batch": {
+          "default": 8,
+          "maximum": 64,
+          "minimum": 2,
+          "title": "Persons Per Batch",
+          "type": "integer"
+        },
+        "samples_per_person": {
+          "default": 4,
+          "maximum": 32,
+          "minimum": 2,
+          "title": "Samples Per Person",
+          "type": "integer"
+        }
+      },
+      "title": "SamplerConfig",
+      "type": "object"
+    },
+    "SyntheticDataConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "canvas_height": {
+          "default": 80,
+          "maximum": 1024,
+          "minimum": 32,
+          "title": "Canvas Height",
+          "type": "integer"
+        },
+        "canvas_width": {
+          "default": 160,
+          "maximum": 1024,
+          "minimum": 32,
+          "title": "Canvas Width",
+          "type": "integer"
+        },
+        "samples_per_signer": {
+          "default": 4,
+          "maximum": 32,
+          "minimum": 2,
+          "title": "Samples Per Signer",
+          "type": "integer"
+        },
+        "train_signers": {
+          "default": 4,
+          "maximum": 64,
+          "minimum": 2,
+          "title": "Train Signers",
+          "type": "integer"
+        },
+        "validation_signers": {
+          "default": 3,
+          "maximum": 64,
+          "minimum": 2,
+          "title": "Validation Signers",
+          "type": "integer"
+        }
+      },
+      "title": "SyntheticDataConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "backbone": {
+      "$ref": "#/$defs/BackboneStageConfig"
+    },
+    "data": {
+      "$ref": "#/$defs/DataConfig"
+    },
+    "evaluation": {
+      "$ref": "#/$defs/EvaluationConfig"
+    },
+    "export": {
+      "$ref": "#/$defs/ExportConfig"
+    },
+    "joint": {
+      "$ref": "#/$defs/JointStageConfig"
+    },
+    "model": {
+      "$ref": "#/$defs/ModelConfig"
+    },
+    "pose": {
+      "$ref": "#/$defs/PoseStageConfig"
+    },
+    "run": {
+      "$ref": "#/$defs/RunConfig"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeConfig"
+    },
+    "sampler": {
+      "$ref": "#/$defs/SamplerConfig"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run",
+    "data",
+    "model",
+    "sampler",
+    "runtime",
+    "backbone",
+    "pose",
+    "joint",
+    "evaluation",
+    "export"
+  ],
+  "title": "TrainerConfig",
+  "type": "object"
+}

@@ -1,0 +1,9 @@
+SigOrbit Trainer
+Copyright (c) 2026 Jordi Murgó
+
+The MIT licence applies only to the source code authored for this repository.
+It does not license or grant rights to signature images, datasets, embeddings,
+training runs, checkpoints, trained weights, or third-party dependencies.
+
+SigOrbit is a separate project. e2cnn is a third-party dependency used through
+SigOrbit. See docs/THIRD_PARTY_NOTICES.md.
