@@ -135,18 +135,19 @@ class BackboneStageConfig(StrictModel):
     arc_margin: float = Field(default=0.35, ge=0, le=1.5, allow_inf_nan=False)
     margin_hold_epochs: int = Field(default=2, ge=0, le=100)
     margin_warmup_epochs: int = Field(default=8, ge=1, le=100)
-    discrete_rotations_deg: tuple[float, ...] = (0.0, 15.0, 30.0, 45.0, 60.0, 75.0)
+    discrete_rotations_deg: tuple[float, ...] | None = (0.0, 15.0, 30.0, 45.0, 60.0, 75.0)
     patience: int = Field(default=8, ge=1, le=500)
 
     @model_validator(mode="after")
     def validate_rotations(self) -> BackboneStageConfig:
-        if not 1 <= len(self.discrete_rotations_deg) <= 32:
-            raise ValueError("backbone requires 1..32 discrete rotations")
-        if any(
-            not math.isfinite(angle) or not -180.0 <= angle <= 180.0
-            for angle in self.discrete_rotations_deg
-        ):
-            raise ValueError("backbone rotation angles must be finite and in [-180, 180]")
+        if self.discrete_rotations_deg is not None:
+            if not 1 <= len(self.discrete_rotations_deg) <= 32:
+                raise ValueError("backbone requires 1..32 discrete rotations or none")
+            if any(
+                not math.isfinite(angle) or not -180.0 <= angle <= 180.0
+                for angle in self.discrete_rotations_deg
+            ):
+                raise ValueError("backbone rotation angles must be finite and in [-180, 180]")
         return self
 
 
@@ -261,7 +262,10 @@ def load_config(path: Path, *, split_seed: int | None = None) -> TrainerConfig:
     if raw["data"].get("rights_attestation") is not None:
         raw["data"]["rights_attestation"] = Path(raw["data"]["rights_attestation"])
     raw["model"]["widths"] = tuple(raw["model"]["widths"])
-    raw["backbone"]["discrete_rotations_deg"] = tuple(raw["backbone"]["discrete_rotations_deg"])
+    if raw["backbone"].get("discrete_rotations_deg") == []:
+        raw["backbone"]["discrete_rotations_deg"] = None
+    if raw["backbone"].get("discrete_rotations_deg") is not None:
+        raw["backbone"]["discrete_rotations_deg"] = tuple(raw["backbone"]["discrete_rotations_deg"])
     raw["evaluation"]["rotation_angles_degrees"] = tuple(
         raw["evaluation"]["rotation_angles_degrees"]
     )

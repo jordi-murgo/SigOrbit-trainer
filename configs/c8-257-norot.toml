@@ -44,7 +44,7 @@ arc_scale = 16.0
 arc_margin = 0.35
 margin_hold_epochs = 2
 margin_warmup_epochs = 8
-discrete_rotations_deg = []
+discrete_rotations_deg = []  # no rotation augmentation; C8 carries it structurally
 patience = 16
 
 [pose]
