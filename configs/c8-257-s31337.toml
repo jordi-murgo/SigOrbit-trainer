@@ -1,0 +1,85 @@
+schema_version = 1
+
+[run]
+name = "c8-257-s31337"
+output_dir = "../../sigorbit-runs/c8-257-final"
+seed = 31337
+deterministic = false
+
+[data]
+kind = "local_manifest"
+manifest = "../../private-data/signatures/dataset.toml"
+rights_attestation = "../../private-data/signatures/rights.attestation.json"
+verify_hashes = true
+require_signer_disjoint_splits = true
+include_forgeries = false
+max_files = 100000
+max_file_bytes = 16777216
+max_pixels = 16777216
+
+[model]
+input_size = 257
+group_order = 8
+widths = [24, 48, 96, 128]
+embedding_dim = 256
+release_compatible = true
+
+[sampler]
+persons_per_batch = 8
+samples_per_person = 4
+
+[runtime]
+device = "auto"
+precision = "tf32"
+workers = 12
+validation_batch_size = 64
+log_every_steps = 25
+
+[backbone]
+epochs = 40
+lr = 0.001
+weight_decay = 0.0001
+warmup_epochs = 2
+arc_scale = 16.0
+arc_margin = 0.35
+margin_hold_epochs = 2
+margin_warmup_epochs = 8
+discrete_rotations_deg = [0.0, 15.0, 30.0, 45.0, 60.0, 75.0]
+patience = 16
+
+[pose]
+epochs = 10
+lr = 0.003
+weight_decay = 0.0001
+start_max_degrees = 45.0
+end_max_degrees = 180.0
+
+[joint]
+epochs = 80
+backbone_lr = 0.0003
+canonicalizer_lr = 0.001
+head_lr = 0.001
+weight_decay = 0.0001
+warmup_epochs = 5
+arc_scale = 16.0
+arc_margin = 0.35
+margin_hold_epochs = 2
+margin_warmup_epochs = 8
+rotation_start_degrees = 10.0
+rotation_end_degrees = 180.0
+rotation_curriculum_epochs = 20
+orientation_weight = 0.5
+consistency_weight = 0.5
+tensor_rotation_padding = 0.0
+patience = 999
+
+[evaluation]
+rotation_angles_degrees = [0.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 90.0, 120.0, 150.0, 180.0]
+fragile_margin = 0.05
+selection_top1_floor = 99.0
+
+[export]
+filename = "sigorbit-c8-257-retrained-v1.pt"
+model_id = "sigorbit-c8-257-retrained-v1"
+preprocess_version = "sigorbit-gray-square-257-v1"
+weight_release_status = "private-research-only"
