@@ -654,7 +654,11 @@ def _train_backbone(
     )
     steps = _steps_per_epoch(config, data)
     scheduler = _cosine_scheduler(
-        optimizer, config.backbone.warmup_epochs * steps, config.backbone.epochs * steps
+        optimizer,
+        config.backbone.warmup_epochs * steps,
+        config.backbone.epochs * steps,
+        restart_step=config.backbone.restart_epochs * steps,
+        restart_warmup_steps=config.backbone.warmup_epochs * steps,
     )
     if resume is None:
         validation = _validate(config, data, model, eval_transform, device)
@@ -1177,16 +1181,44 @@ def _steps_per_epoch(config: TrainerConfig, data: DatasetBundle) -> int:
 
 
 def _cosine_scheduler(
-    optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int
+    optimizer: torch.optim.Optimizer,
+    warmup_steps: int,
+    total_steps: int,
+    restart_step: int = 0,
+    restart_warmup_steps: int = 0,
 ) -> torch.optim.lr_scheduler.LambdaLR:
+    """Cosine annealing with an optional single warm restart at ``restart_step``.
+
+    The first cycle runs from 0 to ``restart_step`` (or ``total_steps`` if no
+    restart). At ``restart_step`` the LR jumps back to peak and a short warmup
+    ramp leads into a second cosine that decays to 0 by ``total_steps``. This
+    reproduces the effect of the manual resume that produced the deployed
+    ``equivariant_rotaug.pt``, but as a planned, reproducible schedule.
+    """
     warmup_steps = max(1, warmup_steps)
+    if restart_step <= 0 or restart_step >= total_steps:
+        # No restart: plain cosine.
+        def factor(step: int) -> float:
+            if step < warmup_steps:
+                return (step + 1) / warmup_steps
+            progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+            return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
+        return torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
+    rw = max(1, restart_warmup_steps)
+    first_span = max(1, restart_step - warmup_steps)
+    second_span = max(1, total_steps - restart_step - rw)
 
     def factor(step: int) -> float:
         if step < warmup_steps:
             return (step + 1) / warmup_steps
-        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+        if step < restart_step:
+            progress = (step - warmup_steps) / first_span
+            return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
+        # Restart: short warmup back to peak, then second cosine.
+        if step < restart_step + rw:
+            return (step - restart_step + 1) / rw
+        progress = (step - restart_step - rw) / second_span
         return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
-
     return torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
 
 

@@ -128,6 +128,9 @@ class RuntimeConfig(StrictModel):
 
 class BackboneStageConfig(StrictModel):
     epochs: int = Field(default=40, ge=1, le=500)
+    restart_epochs: int = Field(default=0, ge=0, le=500,
+        description="If >0, cosine annealing restarts at this epoch (LR resets to peak). "
+                    "0 = single cosine (no restart). epochs must exceed restart_epochs when set.")
     lr: float = Field(default=1e-3, gt=0, le=1.0, allow_inf_nan=False)
     weight_decay: float = Field(default=1e-4, ge=0, le=1.0, allow_inf_nan=False)
     warmup_epochs: int = Field(default=2, ge=0, le=100)
@@ -148,6 +151,12 @@ class BackboneStageConfig(StrictModel):
                 for angle in self.discrete_rotations_deg
             ):
                 raise ValueError("backbone rotation angles must be finite and in [-180, 180]")
+        return self
+
+    @model_validator(mode="after")
+    def validate_restart(self) -> BackboneStageConfig:
+        if 0 < self.restart_epochs >= self.epochs:
+            raise ValueError("backbone.restart_epochs must be strictly less than epochs")
         return self
 
 
