@@ -46,7 +46,7 @@ margin_hold_epochs = 2
 margin_warmup_epochs = 8
 discrete_rotations_deg = []  # no rotation augmentation; C8 carries it structurally
 restart_epochs = 20
-patience = 16
+patience = 500  # disables early stopping for the deliberate 50-epoch restart schedule
 
 [pose]
 epochs = 10
