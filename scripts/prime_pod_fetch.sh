@@ -19,7 +19,7 @@ TERMINATE="${TERMINATE:-}"
 
 case "$POD" in *@*) TARGET="$POD" ;; *) TARGET="ubuntu@$POD" ;; esac
 SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
-ssh_pod() { ssh "${SSH_OPTS[@]}" "$TARGET" "$@" 2>&1 | grep -v "Warning: Permanently added"; }
+ssh_pod() { ssh "${SSH_OPTS[@]}" -o LogLevel=ERROR "$TARGET" "$@"; }
 
 REMOTE_RUN="$REMOTE_RUNS/$RUN_NAME"
 ssh_pod "test -d '$REMOTE_RUN'" || die "no run directory at $REMOTE_RUN"
@@ -30,12 +30,12 @@ log "remote run status: $status"
 
 mkdir -p "$OUT_DIR"
 log "fetching $REMOTE_RUN -> $OUT_DIR/$RUN_NAME"
-scp "${SSH_OPTS[@]}" -q -r "$TARGET:$REMOTE_RUN" "$OUT_DIR/" 2>&1 | grep -v "Warning: Permanently added" || true
-scp "${SSH_OPTS[@]}" -q "$TARGET:$LOG_FILE" "$OUT_DIR/$RUN_NAME/train.log" 2>&1 | grep -v "Warning: Permanently added" || true
+scp "${SSH_OPTS[@]}" -o LogLevel=ERROR -q -r "$TARGET:$REMOTE_RUN" "$OUT_DIR/"
+scp "${SSH_OPTS[@]}" -o LogLevel=ERROR -q "$TARGET:$LOG_FILE" "$OUT_DIR/$RUN_NAME/train.log"
 
 log "verifying checksums against the pod"
-remote_sums="$(ssh_pod "cd '$REMOTE_RUN' && find . -type f \\( -name '*.pt' -o -name '*.json' \\) -print0 | sort -z | xargs -0 sha256sum")"
-local_sums="$(cd "$OUT_DIR/$RUN_NAME" && find . -type f \( -name '*.pt' -o -name '*.json' \) -print0 | sort -z | xargs -0 sha256sum)"
+remote_sums="$(ssh_pod "export LC_ALL=C; cd '$REMOTE_RUN' && find . -type f \\( -name '*.pt' -o -name '*.json' \\) -print0 | sort -z | xargs -0 sha256sum")"
+local_sums="$(export LC_ALL=C; cd "$OUT_DIR/$RUN_NAME" && find . -type f \( -name '*.pt' -o -name '*.json' \) -print0 | sort -z | xargs -0 sha256sum)"
 if [ "$remote_sums" = "$local_sums" ]; then
   log "checksums match ($(printf '%s\n' "$remote_sums" | wc -l) files)"
 else

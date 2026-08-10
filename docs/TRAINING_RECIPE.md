@@ -1,27 +1,124 @@
-# Historical 257 px recipe
+# Validated from-scratch 257 px recipe
 
-The declared selected run used C8 widths `24,48,96,128`, 256-D embeddings,
-FP32, PK batches `P=8,K=4`, ArcFace scale 16/margin 0.35, 10 epochs of
-angle-only pretraining, and 40 joint epochs. Joint rotation ramps from ±10° to
-±180° over 20 epoch indices. Identity, orientation, and cosine-consistency loss
-weights are `1.0,0.5,0.5`.
+This document describes the completed `c8-257-final` run, not the historical
+deployment checkpoint. The source of truth is `configs/c8-257-final.toml`; the
+archived normalized configuration is
+`artifacts/c8-257-final/config.resolved.json`.
 
-Important historical details retained as explicit compatibility settings:
+## Model and data contract
 
-- backbone discrete PIL rotations are one-sided `0,15,30,45,60,75` degrees;
-- tensor rotations are fixed-canvas, bicubic, and historically use normalized
-  zero (gray) padding;
-- direct square resize distorts aspect ratio;
-- clean source images are treated as the zero-angle pose;
-- the historical selected model was chosen on clean validation top-1/margin,
-  while the new protocol also reports rotation metrics.
+- SigOrbit 0.1 `CanonicalizedEncoder`;
+- 257×257 grayscale input, direct bicubic square resize and normalization to
+  `[-1,1]`;
+- C8 widths `24,48,96,128`;
+- 256-D L2-normalized embeddings;
+- 4,276,354 exported model parameters;
+- PK batches `P=8,K=4`;
+- signer-disjoint, decoded-pixel-deduplicated manifest with 5,939 / 610 / 580
+  train / validation / test images across 250 / 32 / 33 signers;
+- genuine samples only.
 
-See configuration comments; changing these creates a different recipe.
+The trainer imports the architecture from the pinned `sigorbit==0.1.0` package.
+ArcFace is a train-only classifier and is absent from the exported encoder.
 
-## Interpolation contract
+## Stage 1 — backbone
 
-For historical augmentation compatibility, train-time square resize is bilinear
-and `RandomAffine` is nearest-neighbour; expanded discrete PIL rotation remains
-bicubic with white fill. Validation uses SigOrbit's production bicubic square
-preprocessing, intentionally measuring the deployed input contract rather than
-the spike's bilinear evaluation transform. This is a declared protocol change.
+The C8 `SteerableEncoder` and a 250-class ArcFace head start from random weights.
+They train for 40 epochs with cross-entropy over ArcFace logits.
+
+```text
+AdamW lr                 1e-3
+weight decay             1e-4
+LR schedule              2-epoch linear warmup → cosine to zero
+ArcFace scale            16
+ArcFace margin target    0.35
+margin schedule          zero through epoch index 2, then linear warmup
+gradient clipping        global norm 5
+```
+
+Augmentation applies framing jitter; one expanded PIL rotation sampled from
+`0,15,30,45,60,75` degrees; direct 257×257 bicubic resize; translation, scale and
+shear jitter with nearest-neighbour interpolation; and brightness/contrast
+jitter. The discrete rotations are intentionally one-sided for compatibility
+with the historical recipe.
+
+Validation uses clean signer-disjoint leave-one-out retrieval. Checkpoint
+selection clamps top-1 at the configured 99% floor and then maximizes median
+genuine-minus-best-impostor margin. Stage 2 restores the best backbone and
+ArcFace state, not the last epoch.
+
+## Stage 2 — pose
+
+The restored backbone and ArcFace head are frozen. A freshly
+identity-initialized 32,098-parameter canonicalizer trains alone for 10 epochs at
+LR `3e-3` with AdamW and weight decay `1e-4`.
+
+For each clean image, the trainer samples a signed angle uniformly from the
+current envelope, creates a fixed-canvas bicubic tensor rotation, and supervises
+both clean pose `(1,0)` and rotated pose `(cos α,sin α)`. The envelope increases
+linearly from ±45° to ±180° across the 10 epochs. The final pose epoch feeds the
+joint stage.
+
+## Stage 3 — joint
+
+Canonicalizer, C8 backbone and ArcFace head train together for 80 epochs:
+
+```text
+backbone lr              3e-4
+canonicalizer lr         1e-3
+ArcFace-head lr          1e-3
+weight decay             1e-4
+LR schedule              5-epoch linear warmup → cosine to zero
+rotation envelope        ±10° → ±180° over 20 epoch indices
+orientation weight      0.5
+consistency weight      0.5
+gradient clipping        global norm 5
+```
+
+For clean `x`, rotated `Rαx` and signer label `y`:
+
+```text
+L = L_arc + 0.5 L_orient + 0.5 L_consist
+
+L_arc     = 0.5 [CE(ArcFace(e(x), y)) + CE(ArcFace(e(Rαx), y))]
+L_orient  = circular pose loss for the clean and known rotated poses
+L_consist = 1 - cosine(e(x), e(Rαx))
+```
+
+Tensor rotation and canonicalizer resampling are fixed-canvas bicubic operations
+with normalized zero (gray) padding. The 80-epoch schedule uses
+`patience = 999`: validation temporarily worsens while the rotation envelope and
+ArcFace penalty increase, so ordinary short-patience early stopping can select a
+checkpoint before the intended problem has been presented. The export restores
+the best joint validation checkpoint, not the final state.
+
+## Precision and reproducibility
+
+Parameters and tensors are FP32. `runtime.precision = "tf32"` enables accelerated
+CUDA matrix multiplication and convolution where supported. The validated run
+sets `run.deterministic = false` because bicubic
+`grid_sampler_2d_backward_cuda` has no deterministic implementation.
+
+Random sources, sampler order and synthetic angles are derived from the run
+seed. Recovery checkpoints contain model, ArcFace, optimizer, scheduler and RNG
+state as safetensors plus strict JSON metadata. Resume is exact at a completed
+epoch boundary only when configuration, dataset, class map, architecture, run ID
+and device topology match.
+
+## Selection and export
+
+Only signer-disjoint validation identities select checkpoints. The manifest
+`test` split is excluded unless the operator explicitly passes
+`--allow-test-split`. The final artifact contains the canonicalizer and backbone,
+strict architecture/preprocessing identity and non-executable provenance; it
+does not contain ArcFace or optimizer state.
+
+Run and validate the recipe:
+
+```bash
+uv run sigorbit-train config validate configs/c8-257-final.toml
+uv run sigorbit-train run configs/c8-257-final.toml
+```
+
+Observed metrics and known limitations are recorded in
+[`RESULTS_c8-257-final.md`](RESULTS_c8-257-final.md).

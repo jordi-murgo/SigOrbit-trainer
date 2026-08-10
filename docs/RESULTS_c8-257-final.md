@@ -1,4 +1,4 @@
-# c8-257-final — reproducible from-scratch SigOrbit encoder
+# c8-257-final — auditable from-scratch SigOrbit encoder run
 
 Checkpoint `sigorbit-c8-257-retrained-v1.pt`, sha256 `f3f0885a79ab54f266b938ca41dd1d6c8f276637e272e4209b5d7726e5c8adbf`.
 
