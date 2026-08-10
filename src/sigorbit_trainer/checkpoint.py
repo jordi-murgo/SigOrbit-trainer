@@ -168,10 +168,38 @@ def save_checkpoint(
             _write_pointer(
                 checkpoint_root / f"best-{stage}.json", final_name, tensor_sha, metadata_sha
             )
+        _prune_unreferenced_checkpoints(checkpoint_root)
         return final_path
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
+
+def _prune_unreferenced_checkpoints(checkpoint_root: Path) -> None:
+    """Retain only checkpoint directories referenced by latest/best pointers."""
+    retained: set[str] = set()
+    for pointer_path in checkpoint_root.glob("*.json"):
+        if pointer_path.name != "latest.json" and not pointer_path.name.startswith("best-"):
+            continue
+        try:
+            payload = json.loads(pointer_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            return
+        checkpoint_name = payload.get("checkpoint") if isinstance(payload, dict) else None
+        if (
+            not isinstance(checkpoint_name, str)
+            or Path(checkpoint_name).name != checkpoint_name
+            or not checkpoint_name.startswith("stage=")
+        ):
+            return
+        retained.add(checkpoint_name)
+    for candidate in checkpoint_root.iterdir():
+        if (
+            candidate.is_dir()
+            and candidate.name.startswith("stage=")
+            and candidate.name not in retained
+        ):
+            shutil.rmtree(candidate)
+    _fsync_directory(checkpoint_root)
 
 
 def load_checkpoint(path: Path) -> LoadedCheckpoint:

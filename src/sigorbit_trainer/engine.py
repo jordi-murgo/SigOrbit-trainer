@@ -109,12 +109,36 @@ def _assert_determinism_supported(config: TrainerConfig, device: torch.device) -
             "set runtime.device = \"cpu\"."
         )
 
+def _assert_precision_supported(config: TrainerConfig, device: torch.device) -> None:
+    if config.runtime.precision != "bf16":
+        return
+    if device.type != "cuda":
+        raise ValueError("runtime.precision = \"bf16\" requires a CUDA device")
+    if not torch.cuda.is_bf16_supported():
+        raise ValueError("runtime.precision = \"bf16\" is not supported by this CUDA device")
+
+
+def _training_autocast(config: TrainerConfig, device: torch.device) -> torch.autocast:
+    return torch.autocast(
+        device_type=device.type,
+        dtype=torch.bfloat16,
+        enabled=config.runtime.precision == "bf16",
+    )
+
+
+def _joint_patience_exhausted(
+    *, completed_epochs: int, bad_epochs: int, min_epochs: int, patience: int
+) -> bool:
+    return completed_epochs >= min_epochs and bad_epochs >= patience
+
+
 
 
 def run_training(config: TrainerConfig, *, source_config: Path | None = None) -> RunResult:
     _configure_runtime(config)
     device = _select_device(config)
     _assert_determinism_supported(config, device)
+    _assert_precision_supported(config, device)
     data = load_data(config.data, config.sampler, config.run.seed)
     output = _prepare_output(config, data)
     checkpoint_root = output / "checkpoints"
@@ -727,8 +751,9 @@ def _train_backbone(
                 images.to(device, non_blocking=True),
                 labels.to(device, non_blocking=True),
             )
-            logits = head(model(images), labels)
-            loss = F.cross_entropy(logits, labels)
+            with _training_autocast(config, device):
+                logits = head(model(images), labels)
+                loss = F.cross_entropy(logits, labels)
             if not torch.isfinite(loss):
                 raise FloatingPointError("non-finite backbone loss")
             optimizer.zero_grad(set_to_none=True)
@@ -860,9 +885,10 @@ def _train_pose(
                 dtype=images.dtype,
             )
             rotated = rotate_tensor(images, angles, config.joint.tensor_rotation_padding)
-            _, clean_pose = canonicalizer(images)
-            _, rotated_pose = canonicalizer(rotated)
-            loss, mae = orientation_loss(clean_pose, rotated_pose, angles)
+            with _training_autocast(config, device):
+                _, clean_pose = canonicalizer(images)
+                _, rotated_pose = canonicalizer(rotated)
+                loss, mae = orientation_loss(clean_pose, rotated_pose, angles)
             if not torch.isfinite(loss):
                 raise FloatingPointError("non-finite pose loss")
             optimizer.zero_grad(set_to_none=True)
@@ -986,8 +1012,16 @@ def _train_joint(
         config.sampler.persons_per_batch * config.sampler.samples_per_person
     ), config, data)
     for epoch in range(start_epoch, config.joint.epochs):
-        if bad_epochs >= config.joint.patience:
-            _log(f"joint stopped early; patience={config.joint.patience} exhausted")
+        if _joint_patience_exhausted(
+            completed_epochs=epoch,
+            bad_epochs=bad_epochs,
+            min_epochs=config.joint.min_epochs,
+            patience=config.joint.patience,
+        ):
+            _log(
+                f"joint stopped early after at least {config.joint.min_epochs} epochs; "
+                f"patience={config.joint.patience} exhausted"
+            )
             break
         maximum = config.joint.rotation_start_degrees + min(
             1.0, epoch / config.joint.rotation_curriculum_epochs
@@ -1019,20 +1053,22 @@ def _train_joint(
                 dtype=images.dtype,
             )
             rotated_images = rotate_tensor(images, angles, config.joint.tensor_rotation_padding)
-            clean_embedding, clean_pose = model(images, return_orientation=True)
-            rotated_embedding, rotated_pose = model(rotated_images, return_orientation=True)
-            clean_logits = head(clean_embedding, labels)
-            rotated_logits = head(rotated_embedding, labels)
-            arc = 0.5 * (
-                F.cross_entropy(clean_logits, labels) + F.cross_entropy(rotated_logits, labels)
-            )
-            orient, mae = orientation_loss(clean_pose, rotated_pose, angles)
-            consistency = embedding_consistency(clean_embedding, rotated_embedding)
-            loss = (
-                arc
-                + config.joint.orientation_weight * orient
-                + config.joint.consistency_weight * consistency
-            )
+            with _training_autocast(config, device):
+                clean_embedding, clean_pose = model(images, return_orientation=True)
+                rotated_embedding, rotated_pose = model(rotated_images, return_orientation=True)
+                clean_logits = head(clean_embedding, labels)
+                rotated_logits = head(rotated_embedding, labels)
+                arc = 0.5 * (
+                    F.cross_entropy(clean_logits, labels)
+                    + F.cross_entropy(rotated_logits, labels)
+                )
+                orient, mae = orientation_loss(clean_pose, rotated_pose, angles)
+                consistency = embedding_consistency(clean_embedding, rotated_embedding)
+                loss = (
+                    arc
+                    + config.joint.orientation_weight * orient
+                    + config.joint.consistency_weight * consistency
+                )
             if not torch.isfinite(loss):
                 raise FloatingPointError("non-finite joint loss")
             optimizer.zero_grad(set_to_none=True)
@@ -1107,8 +1143,16 @@ def _train_joint(
             f"({metrics['seconds']:.0f}s)"
             f"{'  <-- best, saved' if improved else f'  (bad {bad_epochs}/{config.joint.patience})'}"
         )
-        if bad_epochs >= config.joint.patience:
-            _log(f"  early stop: no val improvement in {config.joint.patience} epochs")
+        if _joint_patience_exhausted(
+            completed_epochs=epoch + 1,
+            bad_epochs=bad_epochs,
+            min_epochs=config.joint.min_epochs,
+            patience=config.joint.patience,
+        ):
+            _log(
+                f"  early stop after at least {config.joint.min_epochs} epochs: "
+                f"no val improvement in {config.joint.patience} epochs"
+            )
             break
     best = load_checkpoint(resolve_pointer(checkpoint_root, "best-joint"))
     _log(

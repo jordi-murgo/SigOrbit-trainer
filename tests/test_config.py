@@ -38,3 +38,20 @@ def test_non_finite_rotation_angle_is_rejected() -> None:
     payload["discrete_rotations_deg"] = (0.0, float("nan"))
     with pytest.raises(ValidationError, match="finite"):
         config.backbone.__class__.model_validate(payload)
+
+
+def test_bf16_precision_and_joint_stop_floor_validate() -> None:
+    path = Path(__file__).parents[1] / "configs" / "smoke.toml"
+    config = load_config(path)
+    runtime = config.runtime.__class__.model_validate(
+        {**config.runtime.model_dump(), "precision": "bf16"}
+    )
+    assert runtime.precision == "bf16"
+    joint = config.joint.__class__.model_validate(
+        {**config.joint.model_dump(), "epochs": 80, "min_epochs": 50}
+    )
+    assert joint.min_epochs == 50
+    with pytest.raises(ValidationError, match="min_epochs"):
+        config.joint.__class__.model_validate(
+            {**config.joint.model_dump(), "epochs": 40, "min_epochs": 41}
+        )

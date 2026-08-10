@@ -6,7 +6,12 @@ import pytest
 from sigorbit import load_model
 
 from sigorbit_trainer.config import load_config
-from sigorbit_trainer.engine import evaluate_checkpoint, resume_training, run_training
+from sigorbit_trainer.engine import (
+    _joint_patience_exhausted,
+    evaluate_checkpoint,
+    resume_training,
+    run_training,
+)
 
 
 def test_three_stage_synthetic_smoke(tmp_path: Path) -> None:
@@ -21,6 +26,14 @@ def test_three_stage_synthetic_smoke(tmp_path: Path) -> None:
     assert (result.output_dir / "checkpoints" / "best-backbone.json").is_file()
     assert (result.output_dir / "checkpoints" / "best-pose.json").is_file()
     assert (result.output_dir / "checkpoints" / "best-joint.json").is_file()
+    checkpoint_root = result.output_dir / "checkpoints"
+    retained = {
+        json.loads(pointer.read_text())["checkpoint"]
+        for pointer in checkpoint_root.glob("*.json")
+    }
+    directories = {path.name for path in checkpoint_root.iterdir() if path.is_dir()}
+    assert directories == retained
+    assert len(directories) <= 4
     model, info = load_model(
         result.checkpoint,
         expected_sha256=result.sha256,
@@ -29,6 +42,15 @@ def test_three_stage_synthetic_smoke(tmp_path: Path) -> None:
     assert model.config.input_size == 33
     assert info.model_id == "sigorbit-synthetic-smoke"
 
+
+
+def test_joint_patience_waits_for_minimum_epochs() -> None:
+    policy = {"bad_epochs": 16, "min_epochs": 50, "patience": 16}
+    assert not _joint_patience_exhausted(completed_epochs=49, **policy)
+    assert _joint_patience_exhausted(completed_epochs=50, **policy)
+    assert not _joint_patience_exhausted(
+        completed_epochs=80, bad_epochs=15, min_epochs=50, patience=16
+    )
 
 def test_resume_from_latest_epoch_boundary(tmp_path: Path) -> None:
     source = Path(__file__).parents[1] / "configs" / "smoke.toml"

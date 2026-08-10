@@ -117,10 +117,9 @@ class SamplerConfig(StrictModel):
 
 class RuntimeConfig(StrictModel):
     device: Literal["auto", "cpu", "cuda"] = "auto"
-    # "tf32" keeps fp32 storage and only lets conv/matmul accumulate on Ampere+
-    # tensor cores. It is still bitwise reproducible run to run -- it trades
-    # mantissa bits, not determinism -- and is ~3.5x faster on A100 at 257px.
-    precision: Literal["fp32", "tf32"] = "fp32"
+    # TF32 keeps fp32 storage and permits reduced-mantissa conv/matmul kernels.
+    # BF16 keeps model weights in fp32 and autocasts training forwards on CUDA.
+    precision: Literal["fp32", "tf32", "bf16"] = "fp32"
     workers: int = Field(default=6, ge=0, le=32)
     validation_batch_size: int = Field(default=16, ge=2, le=256)
     log_every_steps: int = Field(default=50, ge=1, le=100_000)
@@ -192,11 +191,19 @@ class JointStageConfig(StrictModel):
     consistency_weight: float = Field(default=0.5, ge=0, le=10, allow_inf_nan=False)
     tensor_rotation_padding: float = Field(default=0.0, ge=-1, le=1, allow_inf_nan=False)
     patience: int = Field(default=999, ge=1, le=1000)
+    min_epochs: int = Field(
+        default=0,
+        ge=0,
+        le=500,
+        description="Do not apply patience until this many joint epochs have completed.",
+    )
 
     @model_validator(mode="after")
     def validate_range(self) -> JointStageConfig:
         if self.rotation_start_degrees > self.rotation_end_degrees:
             raise ValueError("joint rotation start must not exceed end")
+        if self.min_epochs > self.epochs:
+            raise ValueError("joint.min_epochs must not exceed joint.epochs")
         return self
 
 

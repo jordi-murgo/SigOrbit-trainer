@@ -14,3 +14,7 @@
   `dataset split-preview` command.
 - Per-angle retrieval reporting and an opt-in test-split evaluation command.
 - Code-only release safeguards, CI matrix, and MIT code boundary documentation.
+- CUDA BF16 autocast with startup capability validation and FP32 stored weights.
+- Joint-stage `min_epochs` gating so finite patience does not compress or
+  prematurely stop the configured cosine schedule.
+- Bounded recovery storage: retain only latest and per-stage best checkpoints.
