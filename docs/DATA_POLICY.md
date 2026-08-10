@@ -24,8 +24,10 @@ The selected research run used 7,560 genuine images from CEDAR and BHSig260 via
 an aggregate dataset. CEDAR has no verified explicit redistribution grant in
 our audit, and BHSig260 is described as available for research purposes. The
 aggregate's MIT card does not repair upstream rights. Acquire every source
-directly and obtain legal/privacy approval. Automatic Hub download is
-intentionally unsupported.
+directly and obtain legal/privacy approval. `scripts/prepare_dataset.sh`
+can download an authorized Hugging Face dataset and materialize it locally, but
+the operator is responsible for verifying rights before use; the trainer itself
+never downloads data at runtime.
 
 ## Operational minimum
 
