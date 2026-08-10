@@ -130,8 +130,19 @@ after each atomic pointer update.
 
 ## Training with authorized local data
 
-Training never downloads data. If an authorized dataset is already saved as a
-local Hugging Face `DatasetDict`, materialize it into the offline contract:
+Training never downloads data inside the trainer process. A standalone script
+downloads, deduplicates, and materializes an authorized Hugging Face imagefolder
+dataset into the offline contract in one step:
+
+```bash
+HF_TOKEN=hf_... scripts/prepare_dataset.sh
+```
+
+Options: `HF_DATASET`, `HF_REVISION`, `DATASET_ID`, `DEDUPLICATE`,
+`OUTPUT_DIR`, `WORK_DIR`. See `scripts/prepare_dataset.sh --help` for details.
+
+If an authorized dataset is already saved as a local Hugging Face `DatasetDict`,
+materialize it manually:
 
 ```bash
 sigorbit-train dataset import-hf-disk \
@@ -155,9 +166,9 @@ sigorbit-train dataset validate \
 uv run sigorbit-train run configs/c8-257-final.toml
 ```
 
-The importer only reads an already-local directory; it has no Hub download
-path. `attest` records the operator's assertion and does not create legal rights.
-Keep both materialized data and attestation outside the repository.
+The importer only reads an already-local directory. `attest` records the
+operator's assertion and does not create legal rights. Keep both materialized
+data and attestation outside the repository.
 
 The historical CEDAR/BHSig260-derived aggregate may only be used after acquiring
 the sources under applicable terms and documenting authorization. Its trained
