@@ -3389,7 +3389,7 @@ wheels = [
 
 [[package]]
 name = "sigorbit-trainer"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -3433,7 +3433,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7,<8" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15,<1" },
     { name = "safetensors", specifier = ">=0.7,<1" },
-    { name = "sigorbit", specifier = "==0.1.0" },
+    { name = "sigorbit", specifier = ">=0.1.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.4,<3" },
     { name = "torch", specifier = ">=2.7" },
     { name = "torchvision", specifier = ">=0.22" },
