@@ -33,10 +33,12 @@ gradient clipping        global norm 5
 ```
 
 Augmentation applies framing jitter; one expanded PIL rotation sampled from
-`0,15,30,45,60,75` degrees; direct 257×257 bicubic resize; translation, scale and
-shear jitter with nearest-neighbour interpolation; and brightness/contrast
-jitter. The discrete rotations are intentionally one-sided for compatibility
-with the historical recipe.
+the configured `discrete_rotations_deg` set; direct 257×257 bicubic resize;
+translation, scale and shear jitter with nearest-neighbour interpolation; and
+brightness/contrast jitter. The c8-257-final run uses
+`0,15,30,45,60,75` degrees (one-sided for compatibility with the historical
+recipe); the c4-257-b64 run uses `0,90` degrees. The discrete rotations are
+intentionally one-sided.
 
 Validation uses clean signer-disjoint leave-one-out retrieval. Checkpoint
 selection clamps top-1 at the configured 99% floor and then maximizes median
@@ -93,8 +95,8 @@ The export restores the best joint validation checkpoint, not the final state.
 ## Precision and reproducibility
 
 Parameters and tensors are FP32. `runtime.precision = "tf32"` enables accelerated
-CUDA matrix multiplication and convolution where supported. The validated run
-sets `run.deterministic = false` because bicubic
+CUDA matrix multiplication and convolution where supported. Both validated runs
+set `run.deterministic = false` because bicubic
 `grid_sampler_2d_backward_cuda` has no deterministic implementation.
 
 The `run.seed` field controls all stochastic sources in a run: weight
