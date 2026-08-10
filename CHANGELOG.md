@@ -1,8 +1,20 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.2.0 - 2026-08-10
 
-- Initial offline training pipeline for the SigOrbit C8 canonicalized encoder.
+- CUDA BF16 autocast with startup capability validation and FP32 stored weights.
+- Joint-stage `min_epochs` gating so finite patience does not compress or
+  prematurely stop the configured cosine schedule.
+- Bounded recovery storage: retain only latest and per-stage best checkpoints.
+- C4 group_order support and batch-64 (P16×K4) configuration; validated run
+  achieves +0.2546 margin at 2.7× speedup over the C8 batch-32 baseline.
+- `scripts/prepare_dataset.sh`: standalone dataset download, deduplication and
+  materialization pipeline.
+- Pin `sigorbit>=0.2.0` for C4/C8 architecture support.
+
+## 0.1.0 - 2026-08-08
+
+- Initial offline training pipeline for the SigOrbit C_N canonicalized encoder.
 - Strict TOML configuration with a generated JSON Schema and bounded values.
 - Local-only dataset manifests, rights attestations, and an offline importer for
   an already-downloaded Hugging Face `DatasetDict`.
@@ -14,9 +26,3 @@
   `dataset split-preview` command.
 - Per-angle retrieval reporting and an opt-in test-split evaluation command.
 - Code-only release safeguards, CI matrix, and MIT code boundary documentation.
-- CUDA BF16 autocast with startup capability validation and FP32 stored weights.
-- Joint-stage `min_epochs` gating so finite patience does not compress or
-  prematurely stop the configured cosine schedule.
-- Bounded recovery storage: retain only latest and per-stage best checkpoints.
-- C4 group_order support and batch-64 (P16×K4) configuration; validated run
-  achieves +0.2546 margin at 2.7× speedup over the C8 batch-32 baseline.
