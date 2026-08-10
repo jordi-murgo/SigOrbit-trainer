@@ -3355,7 +3355,7 @@ hf = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.9,<2" },
+    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.9.4,<2" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.3,<2" },
     { name = "datasets", marker = "extra == 'hf'", specifier = ">=4,<6" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.19,<2" },
