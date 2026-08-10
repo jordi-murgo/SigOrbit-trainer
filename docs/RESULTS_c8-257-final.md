@@ -4,7 +4,7 @@ Checkpoint `sigorbit-c8-257-retrained-v1.pt`, sha256 `f3f0885a79ab54f266b938ca41
 
 Trained end to end from random init on RTX PRO 6000 Blackwell, 2026-08-08:
 backbone 40 epochs -> canonicalizer pretraining 10 -> joint 80. No external
-checkpoint seeds the run. Dataset deduplicated, `manifest_sha256`
+checkpoint seeds the run. Run seed `31337`. Dataset deduplicated, `manifest_sha256`
 `65eb267c8c13a678cf5fded01f8e0b61a51a73b047e44e4128dcd637874f5928`
 (5,939 / 610 / 580 across 250 / 32 / 33 signers).
 

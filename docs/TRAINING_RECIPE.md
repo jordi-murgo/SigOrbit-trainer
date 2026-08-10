@@ -97,11 +97,16 @@ CUDA matrix multiplication and convolution where supported. The validated run
 sets `run.deterministic = false` because bicubic
 `grid_sampler_2d_backward_cuda` has no deterministic implementation.
 
-Random sources, sampler order and synthetic angles are derived from the run
-seed. Recovery checkpoints contain model, ArcFace, optimizer, scheduler and RNG
-state as safetensors plus strict JSON metadata. Resume is exact at a completed
-epoch boundary only when configuration, dataset, class map, architecture, run ID
-and device topology match.
+The `run.seed` field controls all stochastic sources in a run: weight
+initialization (`torch.manual_seed`), NumPy and Python RNG state, PK sampler
+order, augmentation jitter and discrete-rotation sampling, and synthetic angle
+generation for the pose and joint stages. Both validated runs use seed `31337`.
+Changing the seed produces a different initialization and augmentation sequence
+but the same dataset split (the split has its own `[data.split] seed`), so
+results are comparable across seeds. Recovery checkpoints contain model,
+ArcFace, optimizer, scheduler and RNG state as safetensors plus strict JSON
+metadata. Resume is exact at a completed epoch boundary only when configuration,
+dataset, class map, architecture, run ID and device topology match.
 
 ## Selection and export
 

@@ -5,8 +5,8 @@ Checkpoint `sigorbit-c4-257-b64.pt`, sha256 in `artifacts/c4-257-b64/run.json`.
 Trained end to end from random init on RTX PRO 6000 Blackwell, 2026-08-10:
 backbone 40 epochs -> canonicalizer pretraining 10 -> joint 80 (early-stopped
 at epoch 80 after no improvement for 16 epochs past the 50-epoch floor). No
-external checkpoint seeds the run. Same deduplicated dataset as c8-257-final,
-`manifest_sha256`
+external checkpoint seeds the run. Run seed `31337`. Same deduplicated dataset
+as c8-257-final, `manifest_sha256`
 `65eb267c8c13a678cf5fded01f8e0b61a51a73b047e44e4128dcd637874f5928`
 (5,939 / 610 / 580 across 250 / 32 / 33 signers).
 
