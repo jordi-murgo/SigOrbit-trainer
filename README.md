@@ -43,13 +43,13 @@ flowchart TB
         CC1 --> CC2 --> CC3 --> CCP --> CLIN --> CAFF
     end
 
-    subgraph Backbone["SteerableEncoder (C8-steerable CNN, e2cnn)"]
+    subgraph Backbone["SteerableEncoder (C4 or C8-steerable CNN, e2cnn)"]
         direction TB
-        STEM["Stem<br/>R2Conv 1→24·8 regular k7 p3<br/>+ InnerBatchNorm + ReLU<br/>+ BlurPool /2"]
+        STEM["Stem<br/>R2Conv 1→24·N regular k7 p3<br/>+ InnerBatchNorm + ReLU<br/>+ BlurPool /2 (N = group_order)"]
         L1["Layer 1 (/4)<br/>R2Conv 24→48 k5 p2 + IBN + ReLU<br/>R2Conv 48→48 k5 p2 + IBN + ReLU<br/>+ BlurPool /2"]
         L2["Layer 2 (/8)<br/>R2Conv 48→96 k5 p2 + IBN + ReLU<br/>R2Conv 96→96 k5 p2 + IBN + ReLU<br/>+ BlurPool /2"]
         L3["Layer 3 (/16)<br/>R2Conv 96→128 k5 p2 + IBN + ReLU<br/>R2Conv 128→128 k5 p2 + IBN + ReLU<br/>+ BlurPool /2"]
-        GP["GroupPooling<br/>max over C8 fiber<br/>→ 128 invariant channels"]
+        GP["GroupPooling<br/>max over C4/C8 fiber<br/>→ 128 invariant channels"]
         STEM --> L1 --> L2 --> L3 --> GP
     end
 
@@ -77,7 +77,7 @@ flowchart TB
 The end-to-end workflow wraps three training stages:
 
 1. validate an immutable local manifest and a separate rights attestation;
-2. train the C8 backbone from random weights with PK sampling, discrete rotation
+2. train the C4 or C8 backbone from random weights with PK sampling, discrete rotation
    augmentation and a temporary ArcFace head;
 3. restore the best backbone and train only the SO(2) canonicalizer against
    known synthetic angles;
@@ -86,9 +86,9 @@ The end-to-end workflow wraps three training stages:
 5. evaluate on signer-disjoint validation identities, restore the best joint
    checkpoint and export an inference-only SigOrbit artifact.
 
-There are no reflections: the symmetry is SO(2)+C8, not O(2)/D8. The ArcFace
-classifier, optimizers and schedulers exist only in recovery checkpoints; the
-deployable artifact contains the canonicalizer and backbone.
+There are no reflections: the symmetry is SO(2)+C_N (N = group_order), not O(2)/D_N.
+The ArcFace classifier, optimizers and schedulers exist only in recovery
+checkpoints; the deployable artifact contains the canonicalizer and backbone.
 
 ## Install for development
 
