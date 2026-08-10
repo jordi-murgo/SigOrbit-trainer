@@ -1,22 +1,18 @@
 # Validated from-scratch 257 px recipe
 
-This document describes the completed `c8-257-final` run, not the historical
-deployment checkpoint. The source of truth is `configs/c8-257-final.toml`; the
-archived normalized configuration is
-`artifacts/c8-257-final/config.resolved.json`.
+This document describes two validated runs: the original `c8-257-final` and the
+faster `c4-257-b64` variant. The source of truth is `configs/c8-257-final.toml`
+and `configs/c4-257-b64.toml`; the archived normalized configurations are in
+`artifacts/`.
 
 ## Model and data contract
 
 - SigOrbit 0.1 `CanonicalizedEncoder`;
 - 257×257 grayscale input, direct bicubic square resize and normalization to
   `[-1,1]`;
-- C8 widths `24,48,96,128`;
+- C8 or C4 widths `24,48,96,128`;
 - 256-D L2-normalized embeddings;
-- 4,276,354 exported model parameters;
-- PK batches `P=8,K=4`;
-- signer-disjoint, decoded-pixel-deduplicated manifest with 5,939 / 610 / 580
-  train / validation / test images across 250 / 32 / 33 signers;
-- genuine samples only.
+- PK batches `P=8,K=4` (c8-257-final) or `P=16,K=4` (c4-257-b64);
 
 The trainer imports the architecture from the pinned `sigorbit==0.1.0` package.
 ArcFace is a train-only classifier and is absent from the exported encoder.
@@ -87,10 +83,12 @@ L_consist = 1 - cosine(e(x), e(Rαx))
 
 Tensor rotation and canonicalizer resampling are fixed-canvas bicubic operations
 with normalized zero (gray) padding. The 80-epoch schedule uses
-`patience = 999`: validation temporarily worsens while the rotation envelope and
-ArcFace penalty increase, so ordinary short-patience early stopping can select a
-checkpoint before the intended problem has been presented. The export restores
-the best joint validation checkpoint, not the final state.
+`joint.min_epochs = 50` and `patience = 16`: validation temporarily worsens while
+the rotation envelope and ArcFace penalty increase, so ordinary short-patience
+early stopping can select a checkpoint before the intended problem has been
+presented. The `min_epochs` floor ensures the cosine schedule is not cut short,
+while finite patience avoids wasting epochs after the best checkpoint stabilizes.
+The export restores the best joint validation checkpoint, not the final state.
 
 ## Precision and reproducibility
 
@@ -113,12 +111,15 @@ Only signer-disjoint validation identities select checkpoints. The manifest
 strict architecture/preprocessing identity and non-executable provenance; it
 does not contain ArcFace or optimizer state.
 
-Run and validate the recipe:
+Run and validate either recipe:
 
 ```bash
 uv run sigorbit-train config validate configs/c8-257-final.toml
 uv run sigorbit-train run configs/c8-257-final.toml
+uv run sigorbit-train config validate configs/c4-257-b64.toml
+uv run sigorbit-train run configs/c4-257-b64.toml
 ```
 
 Observed metrics and known limitations are recorded in
-[`RESULTS_c8-257-final.md`](RESULTS_c8-257-final.md).
+[`RESULTS_c8-257-final.md`](RESULTS_c8-257-final.md) and
+[`RESULTS_c4-257-b64.md`](RESULTS_c4-257-b64.md).

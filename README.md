@@ -1,8 +1,10 @@
 # SigOrbit Trainer
 
 Offline, auditable training workflows for [SigOrbit](https://github.com/jordi-murgo/SigOrbit).
-The project trains the 257 px SO(2)-canonicalized C8 signature encoder from random
-initialization without requiring an unpublished initializer.
+The project trains the 257 px SO(2)-canonicalized signature encoder from random
+initialization without requiring an unpublished initializer. C8 and C4
+steerable backbones are supported; the C4 variant trains 2.7× faster with
+comparable margin.
 
 > **Code-only boundary:** MIT covers this repository's code only. This project
 > contains no signatures, datasets, embeddings, checkpoints, or trained weights,
@@ -166,9 +168,10 @@ Read [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md),
 [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md), and
 [`docs/MODEL_RELEASE_POLICY.md`](docs/MODEL_RELEASE_POLICY.md) before training.
 
-The validated configuration and observed run are documented in
-[`docs/TRAINING_RECIPE.md`](docs/TRAINING_RECIPE.md) and
-[`docs/RESULTS_c8-257-final.md`](docs/RESULTS_c8-257-final.md).
+The validated configurations and observed runs are documented in
+[`docs/TRAINING_RECIPE.md`](docs/TRAINING_RECIPE.md),
+[`docs/RESULTS_c8-257-final.md`](docs/RESULTS_c8-257-final.md), and
+[`docs/RESULTS_c4-257-b64.md`](docs/RESULTS_c4-257-b64.md).
 
 ## Randomized splits
 

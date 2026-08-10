@@ -18,3 +18,5 @@
 - Joint-stage `min_epochs` gating so finite patience does not compress or
   prematurely stop the configured cosine schedule.
 - Bounded recovery storage: retain only latest and per-stage best checkpoints.
+- C4 group_order support and batch-64 (P16×K4) configuration; validated run
+  achieves +0.2546 margin at 2.7× speedup over the C8 batch-32 baseline.
