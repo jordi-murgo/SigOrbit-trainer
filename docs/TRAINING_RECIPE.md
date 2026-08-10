@@ -19,7 +19,7 @@ ArcFace is a train-only classifier and is absent from the exported encoder.
 
 ## Stage 1 — backbone
 
-The C8 `SteerableEncoder` and a 250-class ArcFace head start from random weights.
+The `SteerableEncoder` and a 250-class ArcFace head start from random weights.
 They train for 40 epochs with cross-entropy over ArcFace logits.
 
 ```text
@@ -57,7 +57,7 @@ joint stage.
 
 ## Stage 3 — joint
 
-Canonicalizer, C8 backbone and ArcFace head train together for 80 epochs:
+Canonicalizer, backbone and ArcFace head train together for 80 epochs:
 
 ```text
 backbone lr              3e-4
