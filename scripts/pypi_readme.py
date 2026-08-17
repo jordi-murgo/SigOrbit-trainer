@@ -19,7 +19,6 @@ rewritten file.
 from __future__ import annotations
 
 import base64
-import json
 import re
 import sys
 from pathlib import Path
@@ -27,26 +26,37 @@ from pathlib import Path
 REPO_URL = "https://github.com/jordi-murgo/sigorbit-trainer"
 BLOB_BASE = f"{REPO_URL}/blob/main"
 RAW_BASE = f"{REPO_URL}/raw/main"
-MERMAID_INK = "https://mermaid.ink/svg"
+MERMAID_INK = "https://mermaid.ink/img"
 
-# Light theme injected into every Mermaid diagram so the rendered SVG is
-# legible on PyPI's white background instead of the default dark palette.
-_MERMAID_THEME = json.dumps(
-    {
-        "theme": "base",
-        "themeVariables": {
-            "primaryColor": "#e8f0fe",
-            "primaryTextColor": "#1a1a1a",
-            "primaryBorderColor": "#4a7ab5",
-            "lineColor": "#666666",
-            "background": "#ffffff",
-            "mainBkg": "#f5f8fc",
-            "clusterBkg": "#fafbfc",
-            "clusterBorder": "#c8d3e0",
-        },
-    },
-    separators=(",", ":"),
+# Mermaid ``style`` directives in the source README use dark fills with white
+# text for GitHub's dark code blocks. On PyPI's white background those are
+# legible but very heavy. This map rewrites each dark fill to a soft pastel
+# and flips the text colour to dark. The mapping is applied at build time
+# only; the committed README keeps the original dark palette for GitHub.
+_MERMAID_FILL_MAP = {
+    "#1a2a3c": "#e8edf5",
+    "#1a3a5c": "#dbe8f5",
+    "#2d5a2d": "#e0f0e0",
+    "#4a3a1c": "#f5ede0",
+    "#5c1a1a": "#f5dede",
+}
+
+# Matches: style <id> fill:#xxxxxx,color:#fff  (with optional spaces)
+_STYLE_RE = re.compile(
+    r"(style\s+\S+\s+fill:)(#?[0-9a-fA-F]+)(,color:)(#?[0-9a-fA-F]+)"
 )
+
+
+def _lighten_mermaid(src: str) -> str:
+    """Rewrite dark ``style`` fills to light pastels and dark text."""
+
+    def _sub(m: re.Match[str]) -> str:
+        prefix, fill, mid, text = m.groups()
+        light_fill = _MERMAID_FILL_MAP.get(fill.lower(), fill)
+        light_text = "#1a1a1a" if text.lower() in ("#fff", "#ffffff") else text
+        return f"{prefix}{light_fill}{mid}{light_text}"
+
+    return _STYLE_RE.sub(_sub, src)
 
 # Matches [text](url) and ![alt](url)
 _LINK_RE = re.compile(r"(?P<bang>!)?\[(?P<text>[^\]]*)\]\((?P<url>[^)]+)\)")
@@ -81,9 +91,9 @@ def _encode_mermaid(src: str) -> str:
 
 def _replace_mermaid(m: re.Match[str]) -> str:
     src = m.group("src")
-    # Prepend a light theme init directive so the SVG is legible on white.
-    themed = f"%%{{init: {_MERMAID_THEME}}}%%\n{src}"
-    encoded = _encode_mermaid(themed)
+    # Rewrite dark style fills to light pastels for PyPI's white background.
+    lightened = _lighten_mermaid(src)
+    encoded = _encode_mermaid(lightened)
     return f"![Mermaid diagram]({MERMAID_INK}/{encoded})"
 
 

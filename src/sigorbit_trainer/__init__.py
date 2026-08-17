@@ -11,4 +11,4 @@ __all__ = [
     "resume_training",
     "run_training",
 ]
-__version__ = "0.2.3"
+__version__ = "0.2.4"
