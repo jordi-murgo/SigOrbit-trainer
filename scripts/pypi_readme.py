@@ -19,6 +19,7 @@ rewritten file.
 from __future__ import annotations
 
 import base64
+import json
 import re
 import sys
 from pathlib import Path
@@ -27,6 +28,25 @@ REPO_URL = "https://github.com/jordi-murgo/sigorbit-trainer"
 BLOB_BASE = f"{REPO_URL}/blob/main"
 RAW_BASE = f"{REPO_URL}/raw/main"
 MERMAID_INK = "https://mermaid.ink/svg"
+
+# Light theme injected into every Mermaid diagram so the rendered SVG is
+# legible on PyPI's white background instead of the default dark palette.
+_MERMAID_THEME = json.dumps(
+    {
+        "theme": "base",
+        "themeVariables": {
+            "primaryColor": "#e8f0fe",
+            "primaryTextColor": "#1a1a1a",
+            "primaryBorderColor": "#4a7ab5",
+            "lineColor": "#666666",
+            "background": "#ffffff",
+            "mainBkg": "#f5f8fc",
+            "clusterBkg": "#fafbfc",
+            "clusterBorder": "#c8d3e0",
+        },
+    },
+    separators=(",", ":"),
+)
 
 # Matches [text](url) and ![alt](url)
 _LINK_RE = re.compile(r"(?P<bang>!)?\[(?P<text>[^\]]*)\]\((?P<url>[^)]+)\)")
@@ -61,7 +81,9 @@ def _encode_mermaid(src: str) -> str:
 
 def _replace_mermaid(m: re.Match[str]) -> str:
     src = m.group("src")
-    encoded = _encode_mermaid(src)
+    # Prepend a light theme init directive so the SVG is legible on white.
+    themed = f"%%{{init: {_MERMAID_THEME}}}%%\n{src}"
+    encoded = _encode_mermaid(themed)
     return f"![Mermaid diagram]({MERMAID_INK}/{encoded})"
 
 
