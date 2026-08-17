@@ -7,10 +7,10 @@ every relative markdown link or image to an absolute GitHub URL so the same
 README works on both GitHub and PyPI.
 
 PyPI also cannot render ``mermaid`` fenced code blocks.  Each block is
-replaced by an inline SVG image via `mermaid.ink <https://mermaid.ink>`_,
+replaced by an inline PNG image via `mermaid.ink <https://mermaid.ink>`_,
 which encodes the diagram source as a URL-safe base64 path segment.  No
 external files are generated and no build-time renderer (mmdc, Node) is
-needed; the SVG is served on demand by mermaid.ink.
+needed; the image is served on demand by mermaid.ink.
 
 Run it in CI immediately before ``python -m build``; never commit the
 rewritten file.
@@ -28,35 +28,6 @@ BLOB_BASE = f"{REPO_URL}/blob/main"
 RAW_BASE = f"{REPO_URL}/raw/main"
 MERMAID_INK = "https://mermaid.ink/img"
 
-# Mermaid ``style`` directives in the source README use dark fills with white
-# text for GitHub's dark code blocks. On PyPI's white background those are
-# legible but very heavy. This map rewrites each dark fill to a soft pastel
-# and flips the text colour to dark. The mapping is applied at build time
-# only; the committed README keeps the original dark palette for GitHub.
-_MERMAID_FILL_MAP = {
-    "#1a2a3c": "#e8edf5",
-    "#1a3a5c": "#dbe8f5",
-    "#2d5a2d": "#e0f0e0",
-    "#4a3a1c": "#f5ede0",
-    "#5c1a1a": "#f5dede",
-}
-
-# Matches: style <id> fill:#xxxxxx,color:#fff  (with optional spaces)
-_STYLE_RE = re.compile(
-    r"(style\s+\S+\s+fill:)(#?[0-9a-fA-F]+)(,color:)(#?[0-9a-fA-F]+)"
-)
-
-
-def _lighten_mermaid(src: str) -> str:
-    """Rewrite dark ``style`` fills to light pastels and dark text."""
-
-    def _sub(m: re.Match[str]) -> str:
-        prefix, fill, mid, text = m.groups()
-        light_fill = _MERMAID_FILL_MAP.get(fill.lower(), fill)
-        light_text = "#1a1a1a" if text.lower() in ("#fff", "#ffffff") else text
-        return f"{prefix}{light_fill}{mid}{light_text}"
-
-    return _STYLE_RE.sub(_sub, src)
 
 # Matches [text](url) and ![alt](url)
 _LINK_RE = re.compile(r"(?P<bang>!)?\[(?P<text>[^\]]*)\]\((?P<url>[^)]+)\)")
@@ -91,9 +62,7 @@ def _encode_mermaid(src: str) -> str:
 
 def _replace_mermaid(m: re.Match[str]) -> str:
     src = m.group("src")
-    # Rewrite dark style fills to light pastels for PyPI's white background.
-    lightened = _lighten_mermaid(src)
-    encoded = _encode_mermaid(lightened)
+    encoded = _encode_mermaid(src)
     return f"![Mermaid diagram]({MERMAID_INK}/{encoded})"
 
 

@@ -67,11 +67,11 @@ flowchart TB
     GP --> POOL
     NORM --> OUT["256-D L2-normalized embedding"]
 
-    style Input fill:#1a2a3c,color:#fff
-    style Canon fill:#1a3a5c,color:#fff
-    style Backbone fill:#2d5a2d,color:#fff
-    style Head fill:#4a3a1c,color:#fff
-    style OUT fill:#5c1a1a,color:#fff
+    style Input fill:#e8edf5,color:#1a1a1a
+    style Canon fill:#dbe8f5,color:#1a1a1a
+    style Backbone fill:#e0f0e0,color:#1a1a1a
+    style Head fill:#f5ede0,color:#1a1a1a
+    style OUT fill:#f5dede,color:#1a1a1a
 ````
 
 The end-to-end workflow wraps three training stages:
