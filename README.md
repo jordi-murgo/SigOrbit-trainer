@@ -85,8 +85,6 @@ flowchart TB
 See [the architecture notes](https://github.com/jordi-murgo/sigorbit/blob/main/docs/ARCHITECTURE.md) and
 [model card](https://github.com/jordi-murgo/sigorbit/blob/main/docs/MODEL_CARD.md).
 
-## Training pipeline
-
 The end-to-end workflow wraps three training stages:
 
 1. validate an immutable local manifest and a separate rights attestation;
