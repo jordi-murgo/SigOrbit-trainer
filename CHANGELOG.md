@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 - 2026-08-17
+
+- Repository renamed to `jordi-murgo/sigorbit-trainer` (lowercase). All URLs
+  in `pyproject.toml`, `CITATION.cff`, `README.md` and scripts updated to
+  the new canonical repository path.
+- README relative links now rewritten to absolute GitHub URLs at build time
+  so they resolve correctly on PyPI. No source code changes.
+
 ## 0.2.0 - 2026-08-10
 
 - CUDA BF16 autocast with startup capability validation and FP32 stored weights.
