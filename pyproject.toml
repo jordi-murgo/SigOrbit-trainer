@@ -51,10 +51,10 @@ dev = [
 sigorbit-train = "sigorbit_trainer.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/jordi-murgo/SigOrbit-trainer"
-Repository = "https://github.com/jordi-murgo/SigOrbit-trainer"
-Issues = "https://github.com/jordi-murgo/SigOrbit-trainer/issues"
-Documentation = "https://github.com/jordi-murgo/SigOrbit-trainer/tree/main/docs"
+Homepage = "https://github.com/jordi-murgo/sigorbit-trainer"
+Repository = "https://github.com/jordi-murgo/sigorbit-trainer"
+Issues = "https://github.com/jordi-murgo/sigorbit-trainer/issues"
+Documentation = "https://github.com/jordi-murgo/sigorbit-trainer/tree/main/docs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sigorbit_trainer"]

@@ -6,7 +6,7 @@ authors:
   - family-names: "Murgó"
     given-names: "Jordi"
     email: "jordi.murgo@gmail.com"
-repository-code: "https://github.com/jordi-murgo/SigOrbit-trainer"
+repository-code: "https://github.com/jordi-murgo/sigorbit-trainer"
 license: MIT
 version: 0.1.0
 date-released: "2026-08-08"

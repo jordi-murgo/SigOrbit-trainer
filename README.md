@@ -1,6 +1,6 @@
 # SigOrbit Trainer
 
-Offline, auditable training workflows for [SigOrbit](https://github.com/jordi-murgo/SigOrbit).
+Offline, auditable training workflows for [SigOrbit](https://github.com/jordi-murgo/sigorbit).
 The project trains the 257 px SO(2)-canonicalized signature encoder from random
 initialization without requiring an unpublished initializer. C8 and C4
 steerable backbones are supported; the C4 variant trains 2.7× faster with
@@ -93,8 +93,8 @@ checkpoints; the deployable artifact contains the canonicalizer and backbone.
 ## Install for development
 
 ```bash
-git clone https://github.com/jordi-murgo/SigOrbit-trainer.git
-cd SigOrbit-trainer
+git clone https://github.com/jordi-murgo/sigorbit-trainer.git
+cd sigorbit-trainer
 uv sync --extra dev
 ```
 
