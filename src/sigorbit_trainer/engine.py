@@ -106,16 +106,17 @@ def _assert_determinism_supported(config: TrainerConfig, device: torch.device) -
             "grid_sampler_2d_backward_cuda has no deterministic implementation, "
             "so the joint stage cannot run. Set run.deterministic = false "
             "(seeds are still fixed, and runtime.precision is unaffected), or "
-            "set runtime.device = \"cpu\"."
+            'set runtime.device = "cpu".'
         )
+
 
 def _assert_precision_supported(config: TrainerConfig, device: torch.device) -> None:
     if config.runtime.precision != "bf16":
         return
     if device.type != "cuda":
-        raise ValueError("runtime.precision = \"bf16\" requires a CUDA device")
+        raise ValueError('runtime.precision = "bf16" requires a CUDA device')
     if not torch.cuda.is_bf16_supported():
-        raise ValueError("runtime.precision = \"bf16\" is not supported by this CUDA device")
+        raise ValueError('runtime.precision = "bf16" is not supported by this CUDA device')
 
 
 def _training_autocast(config: TrainerConfig, device: torch.device) -> torch.autocast:
@@ -130,8 +131,6 @@ def _joint_patience_exhausted(
     *, completed_epochs: int, bad_epochs: int, min_epochs: int, patience: int
 ) -> bool:
     return completed_epochs >= min_epochs and bad_epochs >= patience
-
-
 
 
 def run_training(config: TrainerConfig, *, source_config: Path | None = None) -> RunResult:
@@ -1008,9 +1007,14 @@ def _train_joint(
         bad_epochs = int(resume.metadata.metrics.get("bad_epochs", 0))
     transform = build_train_transform(config.model.input_size, discrete_angles=None)
     all_parameters = list(model.parameters()) + list(head.parameters())
-    _stage_banner("joint", config.joint.epochs, len(data.train_records) // (
-        config.sampler.persons_per_batch * config.sampler.samples_per_person
-    ), config, data)
+    _stage_banner(
+        "joint",
+        config.joint.epochs,
+        len(data.train_records)
+        // (config.sampler.persons_per_batch * config.sampler.samples_per_person),
+        config,
+        data,
+    )
     for epoch in range(start_epoch, config.joint.epochs):
         if _joint_patience_exhausted(
             completed_epochs=epoch,
@@ -1059,8 +1063,7 @@ def _train_joint(
                 clean_logits = head(clean_embedding, labels)
                 rotated_logits = head(rotated_embedding, labels)
                 arc = 0.5 * (
-                    F.cross_entropy(clean_logits, labels)
-                    + F.cross_entropy(rotated_logits, labels)
+                    F.cross_entropy(clean_logits, labels) + F.cross_entropy(rotated_logits, labels)
                 )
                 orient, mae = orientation_loss(clean_pose, rotated_pose, angles)
                 consistency = embedding_consistency(clean_embedding, rotated_embedding)
