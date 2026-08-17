@@ -1242,17 +1242,17 @@ def _cosine_scheduler(
     warmup_steps = max(1, warmup_steps)
     if restart_step <= 0 or restart_step >= total_steps:
         # No restart: plain cosine.
-        def factor(step: int) -> float:
+        def no_restart_factor(step: int) -> float:
             if step < warmup_steps:
                 return (step + 1) / warmup_steps
             progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
             return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
-        return torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
+        return torch.optim.lr_scheduler.LambdaLR(optimizer, no_restart_factor)
     rw = max(1, restart_warmup_steps)
     first_span = max(1, restart_step - warmup_steps)
     second_span = max(1, total_steps - restart_step - rw)
 
-    def factor(step: int) -> float:
+    def restart_factor(step: int) -> float:
         if step < warmup_steps:
             return (step + 1) / warmup_steps
         if step < restart_step:
@@ -1263,7 +1263,7 @@ def _cosine_scheduler(
             return (step - restart_step + 1) / rw
         progress = (step - restart_step - rw) / second_span
         return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
-    return torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, restart_factor)
 
 
 def _margin(epoch: int, hold: int, warmup: int, target: float) -> float:
