@@ -18,11 +18,11 @@ The three-stage trainer, epoch-boundary resume, strict provenance records and a
 completed from-scratch 257 px run are implemented. Historical checkpoint metrics
 remain historical evidence, not a reproduction claim.
 
-## Architecture and pipeline
+## Architecture
 
-The trainer does not define a second neural network. It pins `sigorbit==0.1.0`
+The trainer does not define a second neural network. It pins `sigorbit`
 and imports the runtime package's `ModelConfig`, `SteerableEncoder` and
-`CanonicalizedEncoder` classes:
+`CanonicalizedEncoder` classes.
 
 ````mermaid
 flowchart TB
@@ -73,6 +73,19 @@ flowchart TB
     style Head fill:#f5ede0,color:#1a1a1a
     style OUT fill:#f5dede,color:#1a1a1a
 ````
+
+- C4: 2,254,466 trainable parameters (2.2 M); C8: 4,276,354 (4.3 M)
+- 257×257 grayscale input
+- 256-dimensional float32 output
+- continuous SO(2) rotation canonicalization; no scale or reflection canonicalization
+- C4 or C8 regular representations and invariant group pooling; the canonicalizer
+  handles continuous rotation, so C4 equivariance (90° symmetry) is sufficient for
+  signatures and trains 2.7× faster
+
+See [the architecture notes](https://github.com/jordi-murgo/sigorbit/blob/main/docs/ARCHITECTURE.md) and
+[model card](https://github.com/jordi-murgo/sigorbit/blob/main/docs/MODEL_CARD.md).
+
+## Training pipeline
 
 The end-to-end workflow wraps three training stages:
 
