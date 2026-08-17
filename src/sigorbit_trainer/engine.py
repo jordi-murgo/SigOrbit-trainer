@@ -1250,6 +1250,7 @@ def _cosine_scheduler(
                 return (step + 1) / warmup_steps
             progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
             return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
+
         return torch.optim.lr_scheduler.LambdaLR(optimizer, no_restart_factor)
     rw = max(1, restart_warmup_steps)
     first_span = max(1, restart_step - warmup_steps)
@@ -1266,6 +1267,7 @@ def _cosine_scheduler(
             return (step - restart_step + 1) / rw
         progress = (step - restart_step - rw) / second_span
         return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
+
     return torch.optim.lr_scheduler.LambdaLR(optimizer, restart_factor)
 
 
