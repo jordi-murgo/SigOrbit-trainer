@@ -28,8 +28,7 @@ def test_three_stage_synthetic_smoke(tmp_path: Path) -> None:
     assert (result.output_dir / "checkpoints" / "best-joint.json").is_file()
     checkpoint_root = result.output_dir / "checkpoints"
     retained = {
-        json.loads(pointer.read_text())["checkpoint"]
-        for pointer in checkpoint_root.glob("*.json")
+        json.loads(pointer.read_text())["checkpoint"] for pointer in checkpoint_root.glob("*.json")
     }
     directories = {path.name for path in checkpoint_root.iterdir() if path.is_dir()}
     assert directories == retained
@@ -43,7 +42,6 @@ def test_three_stage_synthetic_smoke(tmp_path: Path) -> None:
     assert info.model_id == "sigorbit-synthetic-smoke"
 
 
-
 def test_joint_patience_waits_for_minimum_epochs() -> None:
     policy = {"bad_epochs": 16, "min_epochs": 50, "patience": 16}
     assert not _joint_patience_exhausted(completed_epochs=49, **policy)
@@ -51,6 +49,7 @@ def test_joint_patience_waits_for_minimum_epochs() -> None:
     assert not _joint_patience_exhausted(
         completed_epochs=80, bad_epochs=15, min_epochs=50, patience=16
     )
+
 
 def test_resume_from_latest_epoch_boundary(tmp_path: Path) -> None:
     source = Path(__file__).parents[1] / "configs" / "smoke.toml"

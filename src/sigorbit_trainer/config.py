@@ -127,9 +127,13 @@ class RuntimeConfig(StrictModel):
 
 class BackboneStageConfig(StrictModel):
     epochs: int = Field(default=40, ge=1, le=500)
-    restart_epochs: int = Field(default=0, ge=0, le=500,
+    restart_epochs: int = Field(
+        default=0,
+        ge=0,
+        le=500,
         description="If >0, cosine annealing restarts at this epoch (LR resets to peak). "
-                    "0 = single cosine (no restart). epochs must exceed restart_epochs when set.")
+        "0 = single cosine (no restart). epochs must exceed restart_epochs when set.",
+    )
     lr: float = Field(default=1e-3, gt=0, le=1.0, allow_inf_nan=False)
     weight_decay: float = Field(default=1e-4, ge=0, le=1.0, allow_inf_nan=False)
     warmup_epochs: int = Field(default=2, ge=0, le=100)

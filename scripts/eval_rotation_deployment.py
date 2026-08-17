@@ -37,13 +37,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from torchvision import transforms
-
 from sigorbit import load_model
+from torchvision import transforms
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--manifest", required=True, type=Path, help="dataset.toml directory root")
     parser.add_argument("--split", default="validation")
@@ -121,7 +122,9 @@ def main() -> int:
     print(f"{'':>6}  {'top-1    margin':>20}  {'top-1    margin':>20}")
     for angle in angles:
         canvas = [im.rotate(angle, resample=Image.BICUBIC, fillcolor=255) for im in squares]
-        expand = [im.rotate(angle, expand=True, resample=Image.BICUBIC, fillcolor=255) for im in originals]
+        expand = [
+            im.rotate(angle, expand=True, resample=Image.BICUBIC, fillcolor=255) for im in originals
+        ]
         canvas_top1, canvas_margin = retrieve(embed(canvas))
         expand_top1, expand_margin = retrieve(embed(expand))
         print(

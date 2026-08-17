@@ -174,6 +174,7 @@ def save_checkpoint(
         shutil.rmtree(temporary, ignore_errors=True)
         raise
 
+
 def _prune_unreferenced_checkpoints(checkpoint_root: Path) -> None:
     """Retain only checkpoint directories referenced by latest/best pointers."""
     retained: set[str] = set()
