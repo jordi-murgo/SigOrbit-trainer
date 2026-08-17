@@ -63,7 +63,7 @@ def _encode_mermaid(src: str) -> str:
 def _replace_mermaid(m: re.Match[str]) -> str:
     src = m.group("src")
     encoded = _encode_mermaid(src)
-    return f"![Mermaid diagram]({MERMAID_INK}/{encoded})"
+    return f"![Mermaid diagram]({MERMAID_INK}/{encoded})\n\n"
 
 
 def transform(text: str) -> str:
