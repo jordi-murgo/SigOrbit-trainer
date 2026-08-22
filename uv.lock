@@ -3369,7 +3369,7 @@ wheels = [
 
 [[package]]
 name = "sigorbit"
-version = "0.2.0"
+version = "0.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "e2cnn" },
@@ -3382,9 +3382,9 @@ dependencies = [
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "torch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/59/6fd197e2dea1d63620782061c092d0604633b67b6ae4b0218452df4d830c/sigorbit-0.2.0.tar.gz", hash = "sha256:f5004242fa8cc62a52f0bbedbed3619abcee83150f2fa332c6cfe3b7bcdfa221", size = 44612, upload-time = "2026-08-10T11:36:19.767Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/2c/d72a77483b845b8f46bdb274d8fd86e2bc4236e03a3320fa32a528379879/sigorbit-0.2.5.tar.gz", hash = "sha256:5d919d17ae5a90ffb1d4fdc02f39924967d7bf055aca175f50d10af23d318b7f", size = 2394362, upload-time = "2026-08-17T18:05:46.829Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/ea/43c5f2cca62109c093f409c44f185a672a266bec4372e5f7b509b81ca1f0/sigorbit-0.2.0-py3-none-any.whl", hash = "sha256:ecc868eb38b4b637c11d13904a387f2de64951d5d11bab49735118a348ec7e57", size = 22792, upload-time = "2026-08-10T11:36:18.431Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/a7/a9303c7628dc407f22c97e3c10dcfe8c9ea978ded8bcbd0c12d77a3ae2f6/sigorbit-0.2.5-py3-none-any.whl", hash = "sha256:b908bf3fc2140120e7cbcb3c99161ec018d832ef9f09356da42b8e5cf6a19450", size = 24036, upload-time = "2026-08-17T18:05:45.233Z" },
 ]
 
 [[package]]
